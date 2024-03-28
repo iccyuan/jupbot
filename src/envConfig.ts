@@ -18,6 +18,17 @@ class EnvConfig {
     throw new Error(`环境变量 ${key} 未设置`);
   }
 
+  static getBoolean(key: string, defaultValue?: boolean): boolean {
+    const value = process.env[key];
+    if (value !== undefined) {
+      return Boolean(value);;
+    }
+    if (defaultValue !== undefined) {
+      return defaultValue;
+    }
+    throw new Error(`环境变量 ${key} 未设置`);
+  }
+
   // 获取必须的环境变量，如果未设置则抛出错误
   static getMandatory(key: string): string {
     const value = this.get(key);

@@ -13,7 +13,9 @@ enum EnvKeys {
     //监听价格间隔
     MONTION_PRICE_DURATION = 'MONTION_PRICE_DURATION',
     //盈利率，百分比
-    PROFIT = 'PROFIT'
+    PROFIT = 'PROFIT',
+    //终止时卖出所有
+    TERMINATION_SELL_ALL = "TERMINATION_SELL_ALL"
 }
 
 export default EnvKeys;

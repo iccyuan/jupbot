@@ -15,6 +15,8 @@ const TOKEN_B = EnvConfig.getMandatory(EnvKeys.TOKEN_B);
 const AMOUNT = Number(EnvConfig.getMandatory(EnvKeys.AMOUNT));
 // 转成百分比形式
 const PROFIT = Number(EnvConfig.getMandatory(EnvKeys.PROFIT)) / 100;
+const TERMINATION_SELL_ALL = EnvConfig.getBoolean(EnvKeys.TERMINATION_SELL_ALL, false);
+
 // 定义ANSI转义序列来设置绿色和重置颜色
 const green = '\x1b[32m';
 const reset = '\x1b[0m';
@@ -142,6 +144,7 @@ async function sell(decimals: number) {
                         calculateLayer1();
                         calculateLayer_1();
                         sellTime++;
+                        totalBuyAmount -= Number(quote.inAmount);
                     } else {
                         console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, "失败");
                     }
@@ -149,6 +152,37 @@ async function sell(decimals: number) {
             }
         }
     );
+}
+
+
+/**
+ * 卖出通过程序买到的所有Token
+ */
+async function sellAll() {
+    //这里固定TokenA 必须是USDC，避免做过多的逻辑判断
+    getPrice(TOKEN_B, TOKEN_A).then((price) => {
+        let amount = (AMOUNT * (buyTime - sellTime)) / price;
+        if (amount <= 0) {
+            console.log("数量为0无需卖出！")
+        }
+        amount = Math.floor(amount * Math.pow(10, userSetting.tokenBDecimals));
+        quote(TOKEN_B, TOKEN_A, amount).then(
+            (quote) => {
+                if (quote) {
+                    console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, amount / Math.pow(10, userSetting.tokenBDecimals));
+                    swap(quote).then((isScueess) => {
+                        if (isScueess) {
+                            console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, "成功");
+                            return true;
+                        } else {
+                            console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, "失败");
+                            return false;
+                        }
+                    })
+                }
+            }
+        );
+    })
 }
 
 async function updateScreenShow() {
@@ -160,17 +194,18 @@ async function updateScreenShow() {
     info += `${reset}🚀🌕：${await getVersion()}${reset}\n`;
     info += `${reset}运行时长：${orange}${await formatTimeDifference(startTime.getTime(), new Date().getTime())}${reset}\n`;
     info += `${reset}地址：${orange}${await getPublicKey()}${reset}\n`;
+    info += `${reset}当前价格：${green}${await getPrice(TOKEN_B, TOKEN_A)}${reset}\n`;
     //计算盈利百分比,利用总共购买的Token价值和购买金额计算
     const totalTokenPrice = (totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals)) * balanceInfo.tokenPrice;
-    const profit = totalTokenPrice - (buyTime * AMOUNT);
+    const profit = totalTokenPrice - ((buyTime - sellTime) * AMOUNT);
     //盈利百分比
-    const profitPec = (profit / (buyTime * AMOUNT)) / 100;
+    const profitPec = profit / ((buyTime - sellTime) * AMOUNT);
     if (profit >= 0) {
         info += `${reset}时间：${green}${await formatDate(new Date())}${reset}`.padEnd(maxLength);
-        info += `${reset}盈利：${green}${roundToDecimal(profitPec, 2)}(${roundToDecimal(profit, 2)}USDT)${reset}\n`;
+        info += `${reset}盈利：${green}${roundToDecimal(profitPec, 5)}(${roundToDecimal(profit, 2)}USDT)${reset}\n`;
     } else {
         info += `${reset}时间：${green}${await formatDate(new Date())}${reset}`.padEnd(maxLength);
-        info += `${reset}亏损：${red}${roundToDecimal(profitPec, 2)}(${roundToDecimal(profit, 2)}USDT)${reset}\n`;
+        info += `${reset}亏损：${red}${roundToDecimal(profitPec, 5)}(${roundToDecimal(profit, 2)}USDT)${reset}\n`;
     }
     info += `${reset}买入：${green}${layer_1}${reset}`.padEnd(maxLength);
     info += `${reset}卖出：${green}${layer1}${reset}\n`;
@@ -218,6 +253,20 @@ async function montionPrice() {
     }
 
 }
+
+
+process.on('SIGINT', () => {
+    console.log('程序被中断 (Ctrl+C)');
+    if (TERMINATION_SELL_ALL) {
+        sellAll();
+        //先直接等待5s中，现在不知道怎么等待sellAll执行完成之后再调用
+        wait(5000);
+        console.log('所有操作完成，退出程序');
+        process.exit(0); // 正常退出
+    } else {
+        process.exit(0); // 正常退出
+    }
+});
 
 
 start()
