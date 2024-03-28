@@ -4,7 +4,7 @@ import EnvConfig from './envConfig';
 import EnvKeys from './envKeys';
 import wait from './utils/wait';
 import UserSetting from './settings'
-import { formatDate, getVersion } from './utils/util'
+import { formatDate, getVersion, formatTimeDifference, roundToDecimal } from './utils/util'
 import { clearScreen, moveTo, updateScreen } from './utils/screenUpdater'
 
 const USDC_MINT_ADDRESS = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
@@ -22,11 +22,14 @@ const orange = '\x1b[33m';
 const red = '\x1b[31m';
 
 // 记录当前买或者卖的价格
-let layer0: number;
+let layer0: number = 0;
 // 卖价
-let layer1: number;
+let layer1: number = 0;
 // 买价
-let layer_1: number;
+let layer_1: number = 0;
+// 开始运行时间
+let startTime: Date;
+
 // 用户设置数据缓存
 let userSetting: UserSetting = {
     tokenASymbol: "",
@@ -41,6 +44,8 @@ let userSetting: UserSetting = {
 let buyTime = 0;
 // 卖的次数
 let sellTime = 0;
+// 总共购买的数量
+let totalBuyAmount = 0;
 
 async function start() {
     console.log("开始初始化");
@@ -54,6 +59,7 @@ async function start() {
 }
 
 async function init() {
+    startTime = new Date();
     await downloadTokensList();
     const tokensObject = await getTokensObject();
     const tokenA = tokensObject[TOKEN_A];
@@ -108,6 +114,7 @@ async function buy(decimals: number) {
                         calculateLayer1();
                         calculateLayer_1();
                         buyTime++;
+                        totalBuyAmount += Number(quote.outAmount);
                     } else {
                         console.log("\u{1F4C9}买入", userSetting.tokenBSymbol, "失败");
                     }
@@ -147,29 +154,34 @@ async function sell(decimals: number) {
 async function updateScreenShow() {
     const balanceInfo = await getBalanceInfo(TOKEN_B)
     let info: string = "";
-    const maxLength = 40;
+    const maxLength = 50;
+    // 保留几位小数
     const toFixed = 4;
-    info += `${reset}🚀🌕：${await getVersion()}\n`;
-    info += `${reset}地址：${orange}${await getPublicKey()}\n`;
-    //计算盈利百分比
-    const profit = (((balanceInfo.token * balanceInfo.tokenPrice) - (buyTime * AMOUNT)) / (buyTime * AMOUNT)) / 100;
-    if (profit > 0) {
+    info += `${reset}🚀🌕：${await getVersion()}${reset}\n`;
+    info += `${reset}运行时长：${orange}${await formatTimeDifference(startTime.getTime(), new Date().getTime())}${reset}\n`;
+    info += `${reset}地址：${orange}${await getPublicKey()}${reset}\n`;
+    //计算盈利百分比,利用总共购买的Token价值和购买金额计算
+    const totalTokenPrice = (totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals)) * balanceInfo.tokenPrice;
+    const profit = totalTokenPrice - (buyTime * AMOUNT);
+    //盈利百分比
+    const profitPec = (profit / (buyTime * AMOUNT)) / 100;
+    if (profit >= 0) {
         info += `${reset}时间：${green}${await formatDate(new Date())}${reset}`.padEnd(maxLength);
-        info += `${reset}盈利：${green}${profit.toFixed(1)}${reset}\n`;
+        info += `${reset}盈利：${green}${roundToDecimal(profitPec, 2)}(${roundToDecimal(profit, 2)}USDT)${reset}\n`;
     } else {
-        info += `${reset}时间${green}${await formatDate(new Date())}${reset}`.padEnd(maxLength);
-        info += `${reset}亏损：${red}${profit.toFixed(1)}${reset}\n`;
+        info += `${reset}时间：${green}${await formatDate(new Date())}${reset}`.padEnd(maxLength);
+        info += `${reset}亏损：${red}${roundToDecimal(profitPec, 2)}(${roundToDecimal(profit, 2)}USDT)${reset}\n`;
     }
-    info += `${reset}买入：${green}${layer_1.toFixed(toFixed)}${reset}`.padEnd(maxLength);
-    info += `${reset}卖出：${green}${layer1.toFixed(toFixed)}${reset}\n`;
+    info += `${reset}买入：${green}${layer_1}${reset}`.padEnd(maxLength);
+    info += `${reset}卖出：${green}${layer1}${reset}\n`;
     info += `${reset}买入：${green}${buyTime}${reset}`.padEnd(maxLength);
     info += `${reset}卖出：${green}${sellTime}${reset}\n`;
-    info += `${reset}Sol数量：${green}${balanceInfo.sol.toFixed(toFixed)}${reset}`.padEnd(maxLength);
-    info += `${reset}${userSetting.tokenBSymbol}数量：${green}${balanceInfo.token.toFixed(toFixed)}${reset}\n`;
-    info += `${reset}Sol价格：${green}${balanceInfo.solPrice.toFixed(toFixed)}${reset}`.padEnd(maxLength);
-    info += `${reset}${userSetting.tokenBSymbol}价格：${green}${balanceInfo.tokenPrice.toFixed(toFixed)}${reset}\n`;
-    info += `${reset}USDC数量：${green}${balanceInfo.usdc.toFixed(toFixed)}${reset}`.padEnd(maxLength);
-    info += `${reset}总价值(${userSetting.tokenBSymbol}+USDC)：${green}${(balanceInfo.token * balanceInfo.tokenPrice + balanceInfo.usdc).toFixed(toFixed)}${reset}\n`;
+    info += `${reset}Sol数量：${green}${roundToDecimal(balanceInfo.sol, toFixed)}${reset}`.padEnd(maxLength);
+    info += `${reset}${userSetting.tokenBSymbol}数量：${green}${roundToDecimal(balanceInfo.token, toFixed)}${reset}\n`;
+    info += `${reset}Sol价格：${green}${roundToDecimal(balanceInfo.solPrice, toFixed)}${reset}`.padEnd(maxLength);
+    info += `${reset}${userSetting.tokenBSymbol}价格：${green}${balanceInfo.tokenPrice}${reset}\n`;
+    info += `${reset}USDC数量：${green}${roundToDecimal(balanceInfo.usdc, 2)}${reset}`.padEnd(maxLength);
+    info += `${reset}总价值💰(${userSetting.tokenBSymbol}+USDC)：${green}${roundToDecimal((balanceInfo.token * balanceInfo.tokenPrice + balanceInfo.usdc), toFixed)}${reset}\n`;
     updateScreen(info);
 }
 
@@ -187,7 +199,10 @@ async function montionPrice() {
             if (totalTokenBalance <= 5) {
                 await buy(tokenA_decimals)
             } else {
-                await sell(tokenB_decimals)
+                // 只有当购买过才触发卖
+                if (buyTime > 0) {
+                    await sell(tokenB_decimals)
+                }
             }
         } else if (price < layer_1) {
             const usdcBalance = await getTokenBalance(TOKEN_A);
