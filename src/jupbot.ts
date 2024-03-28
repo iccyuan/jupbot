@@ -102,6 +102,9 @@ function calculateLayer_1() {
 
 async function buy(decimals: number) {
     const price = await getPrice(TOKEN_B, TOKEN_A);
+    if (!price) {
+        return;
+    }
     //这里固定TokenA 必须是USDC，避免做过多的逻辑判断
     let amount = AMOUNT;
     amount = Math.floor(amount * Math.pow(10, decimals));
@@ -131,6 +134,9 @@ async function sell(decimals: number) {
     //这里固定TokenA 必须是USDC，避免做过多的逻辑判断
     //得到TokenB 单价
     const price = await getPrice(TOKEN_B, TOKEN_A);
+    if (!price) {
+        return;
+    }
     let amount = AMOUNT / price;
     amount = Math.floor(amount * Math.pow(10, decimals));
     await quote(TOKEN_B, TOKEN_A, amount).then(
@@ -159,30 +165,32 @@ async function sell(decimals: number) {
  * 卖出通过程序买到的所有Token
  */
 async function sellAll() {
-    //这里固定TokenA 必须是USDC，避免做过多的逻辑判断
-    getPrice(TOKEN_B, TOKEN_A).then((price) => {
-        let amount = (AMOUNT * (buyTime - sellTime)) / price;
-        if (amount <= 0) {
-            console.log("数量为0无需卖出！")
-        }
-        amount = Math.floor(amount * Math.pow(10, userSetting.tokenBDecimals));
-        quote(TOKEN_B, TOKEN_A, amount).then(
-            (quote) => {
-                if (quote) {
-                    console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, amount / Math.pow(10, userSetting.tokenBDecimals));
-                    swap(quote).then((isScueess) => {
-                        if (isScueess) {
-                            console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, "成功");
-                            return true;
-                        } else {
-                            console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, "失败");
-                            return false;
-                        }
-                    })
-                }
+    // 这里固定TokenA 必须是USDC，避免做过多的逻辑判断
+    // 得到TokenB 单价
+    const price = await getPrice(TOKEN_B, TOKEN_A);
+    if (!price) {
+        return;
+    }
+    let amount = (AMOUNT * (buyTime - sellTime)) / price;
+    if (amount <= 0) {
+        return;
+    }
+    amount = Math.floor(amount * Math.pow(10, userSetting.tokenBDecimals));
+    try {
+        const quote_ = await quote(TOKEN_B, TOKEN_A, amount);
+        if (quote_) {
+            console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, amount / Math.pow(10, userSetting.tokenBDecimals));
+            const isSuccess = await swap(quote_);
+            if (isSuccess) {
+                console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, "成功");
+            } else {
+                console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, "失败");
             }
-        );
-    })
+        }
+    } catch (error) {
+        console.error('卖出过程中发生错误：', error);
+        throw error; // 抛出错误，以便在上层处理
+    }
 }
 
 async function updateScreenShow() {
@@ -195,17 +203,19 @@ async function updateScreenShow() {
     info += `${reset}运行时长：${orange}${await formatTimeDifference(startTime.getTime(), new Date().getTime())}${reset}\n`;
     info += `${reset}地址：${orange}${await getPublicKey()}${reset}\n`;
     info += `${reset}当前价格：${green}${await getPrice(TOKEN_B, TOKEN_A)}${reset}\n`;
-    //计算盈利百分比,利用总共购买的Token价值和购买金额计算
-    const totalTokenPrice = (totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals)) * balanceInfo.tokenPrice;
-    const profit = totalTokenPrice - ((buyTime - sellTime) * AMOUNT);
-    //盈利百分比
-    const profitPec = profit / ((buyTime - sellTime) * AMOUNT);
-    if (profit >= 0) {
-        info += `${reset}时间：${green}${await formatDate(new Date())}${reset}`.padEnd(maxLength);
-        info += `${reset}盈利：${green}${roundToDecimal(profitPec, 5)}(${roundToDecimal(profit, 2)}USDT)${reset}\n`;
-    } else {
-        info += `${reset}时间：${green}${await formatDate(new Date())}${reset}`.padEnd(maxLength);
-        info += `${reset}亏损：${red}${roundToDecimal(profitPec, 5)}(${roundToDecimal(profit, 2)}USDT)${reset}\n`;
+    if (balanceInfo.tokenPrice) {
+        //计算盈利百分比,利用总共购买的Token价值和购买金额计算
+        const totalTokenPrice = (totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals)) * balanceInfo.tokenPrice;
+        const profit = totalTokenPrice - ((buyTime - sellTime) * AMOUNT);
+        //盈利百分比
+        const profitPec = profit / (balanceInfo.token * balanceInfo.tokenPrice + balanceInfo.usdc);
+        if (profit >= 0) {
+            info += `${reset}时间：${green}${await formatDate(new Date())}${reset}`.padEnd(maxLength);
+            info += `${reset}盈利：${green}${roundToDecimal(profitPec, 5) * 100}%(${roundToDecimal(profit, 2)}USDC)${reset}\n`;
+        } else {
+            info += `${reset}时间：${green}${await formatDate(new Date())}${reset}`.padEnd(maxLength);
+            info += `${reset}亏损：${red}${roundToDecimal(profitPec, 5) * 100}%(${roundToDecimal(profit, 2)}USDC)${reset}\n`;
+        }
     }
     info += `${reset}买入：${green}${layer_1}${reset}`.padEnd(maxLength);
     info += `${reset}卖出：${green}${layer1}${reset}\n`;
@@ -213,10 +223,14 @@ async function updateScreenShow() {
     info += `${reset}卖出：${green}${sellTime}${reset}\n`;
     info += `${reset}Sol数量：${green}${roundToDecimal(balanceInfo.sol, toFixed)}${reset}`.padEnd(maxLength);
     info += `${reset}${userSetting.tokenBSymbol}数量：${green}${roundToDecimal(balanceInfo.token, toFixed)}${reset}\n`;
-    info += `${reset}Sol价格：${green}${roundToDecimal(balanceInfo.solPrice, toFixed)}${reset}`.padEnd(maxLength);
+    if (balanceInfo.solPrice) {
+        info += `${reset}Sol价格：${green}${roundToDecimal(balanceInfo.solPrice, toFixed)}${reset}`.padEnd(maxLength);
+    }
     info += `${reset}${userSetting.tokenBSymbol}价格：${green}${balanceInfo.tokenPrice}${reset}\n`;
     info += `${reset}USDC数量：${green}${roundToDecimal(balanceInfo.usdc, 2)}${reset}`.padEnd(maxLength);
-    info += `${reset}总价值💰(${userSetting.tokenBSymbol}+USDC)：${green}${roundToDecimal((balanceInfo.token * balanceInfo.tokenPrice + balanceInfo.usdc), toFixed)}${reset}\n`;
+    if (balanceInfo.tokenPrice) {
+        info += `${reset}总价值💰(${userSetting.tokenBSymbol}+USDC)：${green}${roundToDecimal((balanceInfo.token * balanceInfo.tokenPrice + balanceInfo.usdc), toFixed)}${reset}\n`;
+    }
     updateScreen(info);
 }
 
@@ -227,6 +241,9 @@ async function montionPrice() {
     while (true) {
         updateScreenShow();
         const price = await getPrice(TOKEN_B, TOKEN_A);
+        if (!price) {
+            return;
+        }
         if (price > layer1) {
             const tokenBalance = await getTokenBalance(TOKEN_B);
             const totalTokenBalance = tokenBalance * price;
@@ -254,19 +271,20 @@ async function montionPrice() {
 
 }
 
-
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
     console.log('程序被中断 (Ctrl+C)');
     if (TERMINATION_SELL_ALL) {
-        sellAll();
-        //先直接等待5s中，现在不知道怎么等待sellAll执行完成之后再调用
-        wait(5000);
-        console.log('所有操作完成，退出程序');
-        process.exit(0); // 正常退出
-    } else {
-        process.exit(0); // 正常退出
+        try {
+            await sellAll();
+            console.log('所有操作已完成，程序正常退出');
+            process.exit(0); // 正常退出
+        } catch (error) {
+            console.error('发生错误：', error);
+            process.exit(1); // 异常退出
+        }
     }
 });
+
 
 
 start()

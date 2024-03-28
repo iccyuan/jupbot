@@ -156,10 +156,15 @@ export async function getTokensObject(): Promise<{ [address: string]: Token }> {
  * @param vsToken token B
  * @returns tokenA(ids) 价值多少(vsToken) token B
  */
-export async function getPrice(ids: string, vsToken: string): Promise<number> {
+export async function getPrice(ids: string, vsToken: string): Promise<number | undefined> {
     const response = await axios.get(`https://price.jup.ag/v4/price?ids=${ids}&vsToken=${vsToken}`);
     const data = response.data.data;
-    const price = data[ids].price;
-    //console.log(`1${green}${data[ids].mintSymbol}${reset}等于${green}${data[ids].price}${reset}${data[ids].vsTokenSymbol}`);
-    return price;
+    // 检查data是否存在，并且是否包含指定的id
+    if (data && data[ids]) {
+        const price = data[ids].price;
+        return price;
+    } else {
+        // 如果data未定义或不包含指定的id，返回undefined
+        return undefined;
+    }
 }

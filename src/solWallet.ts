@@ -65,8 +65,8 @@ type BalanceInfo = {
     sol: number;
     usdc: number;
     token: number;
-    solPrice: number;
-    tokenPrice: number;
+    solPrice: number | undefined;
+    tokenPrice: number | undefined;
 
 }
 
