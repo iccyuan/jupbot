@@ -95,12 +95,12 @@ async function calculateLayer_1() {
 async function buy(decimals: number) {
     const price = await getPrice(TOKEN_B, TOKEN_A);
     //这里固定TokenA 必须是USDC，避免做过多的逻辑判断
-    let amount = Number(AMOUNT);
+    let amount = AMOUNT;
     amount = Math.floor(amount * Math.pow(10, decimals));
     await quote(TOKEN_A, TOKEN_B, amount).then(
         (quote) => {
             if (quote) {
-                console.log("\u{1F4C9}买入", userSetting.tokenBSymbol, amount / Math.pow(10, decimals), TOKEN_A);
+                console.log("\u{1F4C9}买入", userSetting.tokenBSymbol, amount / Math.pow(10, decimals));
                 swap(quote).then((isScueess) => {
                     if (isScueess) {
                         console.log("\u{1F4C9}买入", userSetting.tokenBSymbol, "成功");
@@ -122,12 +122,12 @@ async function sell(decimals: number) {
     //这里固定TokenA 必须是USDC，避免做过多的逻辑判断
     //得到TokenB 单价
     const price = await getPrice(TOKEN_B, TOKEN_A);
-    let amount = Number(AMOUNT) / price;
+    let amount = AMOUNT / price;
     amount = Math.floor(amount * Math.pow(10, decimals));
     await quote(TOKEN_B, TOKEN_A, amount).then(
         (quote) => {
             if (quote) {
-                console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, amount / Math.pow(10, decimals), TOKEN_A);
+                console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, amount / Math.pow(10, decimals));
                 swap(quote).then((isScueess) => {
                     if (isScueess) {
                         console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, "成功");
@@ -160,8 +160,8 @@ async function updateScreenShow() {
         info += `${reset}时间${green}${await formatDate(new Date())}${reset}`.padEnd(maxLength);
         info += `${reset}亏损：${red}${profit.toFixed(1)}${reset}\n`;
     }
-    info += `${reset}买入触发：${green}${layer_1.toFixed(toFixed)}${reset}`.padEnd(maxLength);
-    info += `${reset}卖出触发：${green}${layer1.toFixed(toFixed)}${reset}\n`;
+    info += `${reset}买入触发：${green}${layer_1 / Math.pow(10, userSetting.tokenBDecimals)}${reset}`.padEnd(maxLength);
+    info += `${reset}卖出触发：${green}${layer1 / Math.pow(10, userSetting.tokenBDecimals)}${reset}\n`;
     info += `${reset}买入：${green}${buyTime}${reset}`.padEnd(maxLength);
     info += `${reset}卖出：${green}${sellTime}${reset}\n`;
     info += `${reset}Sol数量：${green}${balanceInfo.sol.toFixed(toFixed)}${reset}`.padEnd(maxLength);
