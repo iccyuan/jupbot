@@ -80,14 +80,14 @@ async function init() {
 /**
  * 计算卖出未知
  */
-async function calculateLayer1() {
+function calculateLayer1() {
     layer1 = layer0 + (layer0 * PROFIT);
 }
 
 /**
  * 计算买入位置
  */
-async function calculateLayer_1() {
+function calculateLayer_1() {
     layer_1 = layer0 - (layer0 * PROFIT);
 }
 
@@ -160,8 +160,8 @@ async function updateScreenShow() {
         info += `${reset}时间${green}${await formatDate(new Date())}${reset}`.padEnd(maxLength);
         info += `${reset}亏损：${red}${profit.toFixed(1)}${reset}\n`;
     }
-    info += `${reset}买入：${green}${(layer_1 / Math.pow(10, userSetting.tokenBDecimals)).toFixed(toFixed)}${reset}`.padEnd(maxLength);
-    info += `${reset}卖出：${green}${(layer1 / Math.pow(10, userSetting.tokenBDecimals)).toFixed(toFixed)}${reset}\n`;
+    info += `${reset}买入：${green}${layer_1.toFixed(toFixed)}${reset}`.padEnd(maxLength);
+    info += `${reset}卖出：${green}${layer1.toFixed(toFixed)}${reset}\n`;
     info += `${reset}买入：${green}${buyTime}${reset}`.padEnd(maxLength);
     info += `${reset}卖出：${green}${sellTime}${reset}\n`;
     info += `${reset}Sol数量：${green}${balanceInfo.sol.toFixed(toFixed)}${reset}`.padEnd(maxLength);
