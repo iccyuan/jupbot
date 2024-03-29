@@ -1,19 +1,21 @@
+import EnvConfig from './envConfig';
+import EnvKeys from './envKeys';
+import { Wallet } from "@project-serum/anchor";
+import bs58 from "bs58";
+import solanaWeb3 from '@solana/web3.js';
 import {
     Connection,
     PublicKey,
     Keypair,
     clusterApiUrl
 } from '@solana/web3.js';
-import EnvConfig from './envConfig';
-import EnvKeys from './envKeys';
-import { Wallet } from "@project-serum/anchor";
-import bs58 from "bs58";
-import solanaWeb3 from '@solana/web3.js';
 import { getPrice, getTokens } from './jupapi'
 import { TOKEN_PROGRAM_ID, getMint } from '@solana/spl-token';
 
 // 创建连接
-const connection = new Connection(EnvConfig.get(EnvKeys.API_ENDPOINT, clusterApiUrl('mainnet-beta')), 'confirmed');
+const connection = new Connection(EnvConfig.get(EnvKeys.API_ENDPOINT, clusterApiUrl('mainnet-beta')),
+    { commitment: "confirmed", confirmTransactionInitialTimeout: 5000 });
+
 const wallet = new Wallet(
     Keypair.fromSecretKey(bs58.decode(EnvConfig.getMandatory(EnvKeys.PRIVATE_KEY)))
 );

@@ -17,7 +17,8 @@ const wallet = new Wallet(
 );
 
 const API_ENDPOINT = EnvConfig.get(EnvKeys.API_ENDPOINT, clusterApiUrl('mainnet-beta'))
-const connection = new Connection(API_ENDPOINT);
+const connection = new Connection(API_ENDPOINT,
+    { commitment: "confirmed", confirmTransactionInitialTimeout: 5000 });
 
 // 定义ANSI转义序列来设置绿色和重置颜色
 const green = '\x1b[32m';
@@ -88,7 +89,7 @@ export async function swap(quote: QuoteResponse) {
         // Simulation error, we can check the logs for more details
         // If you are getting an invalid account error, make sure that you have the input mint account to actually swap from.
         logger.error("Simulation Error:");
-        logger.error(`${{ err, logs }}`);
+        logger.error(`${err}${logs}}`);
         return false;
     }
 
