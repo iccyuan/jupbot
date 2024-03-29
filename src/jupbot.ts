@@ -1,5 +1,5 @@
 import { getPrice, getTokens, swap, quote, getTokensObject, downloadTokensList } from './jupapi'
-import { getBalanceInfo, getTokenBalance, getTokenDecimals, getPublicKey } from './solWallet'
+import { getBalanceInfo, getTokenBalance, getPublicKey } from './solWallet'
 import EnvConfig from './envConfig';
 import EnvKeys from './envKeys';
 import wait from './utils/wait';
@@ -53,8 +53,7 @@ async function start() {
     console.log("开始初始化");
     await init();
     console.log("初始化完成✅");
-    const tokenA_decimals = await getTokenDecimals(TOKEN_A)
-    await buy(tokenA_decimals)
+    await buy(userSetting.tokenADecimals)
     console.log("开始🚀🌕");
     clearScreen();
     montionPrice();
@@ -173,6 +172,7 @@ async function sellAll() {
     }
     let amount = (AMOUNT * (buyTime - sellTime)) / price;
     if (amount <= 0) {
+        console.log("无需卖出")
         return;
     }
     amount = Math.floor(amount * Math.pow(10, userSetting.tokenBDecimals));
@@ -236,42 +236,53 @@ async function updateScreenShow() {
 
 
 async function montionPrice() {
-    const tokenA_decimals = await getTokenDecimals(TOKEN_A)
-    const tokenB_decimals = await getTokenDecimals(TOKEN_B)
+    const tokenA_decimals = userSetting.tokenADecimals;
+    const tokenB_decimals = userSetting.tokenBDecimals;
     while (true) {
-        updateScreenShow();
-        const price = await getPrice(TOKEN_B, TOKEN_A);
-        if (!price) {
-            return;
-        }
-        if (price > layer1) {
-            const tokenBalance = await getTokenBalance(TOKEN_B);
-            const totalTokenBalance = tokenBalance * price;
-            //如果剩余的不够卖
-            if (totalTokenBalance <= 5) {
-                await buy(tokenA_decimals)
-            } else {
-                // 只有当购买过才触发卖
-                if (buyTime > 0) {
-                    await sell(tokenB_decimals)
+        try {
+            updateScreenShow();
+            const price = await getPrice(TOKEN_B, TOKEN_A);
+            if (!price) {
+                return;
+            }
+            if (price > layer1) {
+                const tokenBalance = await getTokenBalance(TOKEN_B);
+                const totalTokenBalance = tokenBalance * price;
+                //如果剩余的不够卖
+                if (totalTokenBalance <= 5) {
+                    await buy(tokenA_decimals)
+                } else {
+                    // 只有当购买过才触发卖
+                    if (sellTime <= buyTime) {
+                        await sell(tokenB_decimals)
+                    } else {
+                        calculateLayer1();
+                        calculateLayer_1();
+                    }
+                }
+            } else if (price < layer_1) {
+                const usdcBalance = await getTokenBalance(TOKEN_A);
+                //如果剩余的不够买
+                if (usdcBalance <= 5) {
+                    await sell(tokenB_decimals);
+                } else {
+                    await buy(tokenA_decimals);
                 }
             }
-        } else if (price < layer_1) {
-            const usdcBalance = await getTokenBalance(TOKEN_A);
-            //如果剩余的不够买
-            if (usdcBalance <= 5) {
-                await sell(tokenB_decimals)
-            } else {
-                await buy(tokenA_decimals)
-            }
+        } catch (error) {
+            console.log(error);
         }
-
         await wait(Number(EnvConfig.get(EnvKeys.MONTION_PRICE_DURATION, "5000")));
     }
 
 }
 
-process.on('SIGINT', async () => {
+
+/**
+ * Do stuff and exit the process
+ * @param {NodeJS.SignalsListener} signal
+ */
+async function signalHandler(signal: NodeJS.SignalsListener) {
     console.log('程序被中断 (Ctrl+C)');
     if (TERMINATION_SELL_ALL) {
         try {
@@ -283,8 +294,11 @@ process.on('SIGINT', async () => {
             process.exit(1); // 异常退出
         }
     }
-});
+}
 
+process.on('SIGINT', signalHandler)
+process.on('SIGTERM', signalHandler)
+process.on('SIGQUIT', signalHandler)
 
 
 start()
