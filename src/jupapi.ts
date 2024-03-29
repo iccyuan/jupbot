@@ -43,12 +43,11 @@ export async function quote(tokenA: string, tokenB: string, amount: number) {
         onlyDirectRoutes: false,
         asLegacyTransaction: false,
     });
-    //console.log(quote)
-    logger.info(`quote: ${quote}`);
     if (!quote) {
         logger.error("unable to quote");
         return;
     }
+    logger.info(`quote: ${JSON.stringify(quote, null, 2)}`);
     return quote;
 
 }
@@ -89,7 +88,8 @@ export async function swap(quote: QuoteResponse) {
         // Simulation error, we can check the logs for more details
         // If you are getting an invalid account error, make sure that you have the input mint account to actually swap from.
         logger.error("Simulation Error:");
-        logger.error(`${err}${logs}}`);
+        logger.error(`${err.toString()}`);
+        logger.error(`${logs}`);
         return false;
     }
 

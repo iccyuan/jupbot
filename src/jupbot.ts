@@ -35,6 +35,17 @@ let layer_1: number = -1;
 // 开始运行时间
 let startTime: Date;
 
+//交易标记 1有买入进行中 2有卖出进行中
+let tradeFlag = -1;
+
+enum TradeFlagValue {
+    DEFAULT = -1,
+    BUY = 1,
+    SELL = 2
+}
+
+let autoTradeFlag = true;
+
 // 用户设置数据缓存
 let userSetting: UserSetting = {
     tokenASymbol: "",
@@ -103,6 +114,7 @@ function calculateLayer_1() {
 
 
 async function buy(decimals: number) {
+    tradeFlag = TradeFlagValue.BUY;
     const price = await getPrice(TOKEN_B, TOKEN_A);
     if (!price) {
         return;
@@ -115,6 +127,7 @@ async function buy(decimals: number) {
             if (quote) {
                 logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}${amount / Math.pow(10, decimals)}`);
                 swap(quote).then((isScueess) => {
+                    tradeFlag = TradeFlagValue.DEFAULT;
                     if (isScueess) {
                         logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}成功`);
                         layer0 = price;
@@ -126,6 +139,8 @@ async function buy(decimals: number) {
                         logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}失败`);
                     }
                 })
+            } else {
+                tradeFlag = TradeFlagValue.DEFAULT;
             }
         }
     );
@@ -133,6 +148,7 @@ async function buy(decimals: number) {
 }
 
 async function sell(decimals: number) {
+    tradeFlag = TradeFlagValue.SELL;
     //这里固定TokenA 必须是USDC，避免做过多的逻辑判断
     //得到TokenB 单价
     const price = await getPrice(TOKEN_B, TOKEN_A);
@@ -146,6 +162,7 @@ async function sell(decimals: number) {
             if (quote) {
                 logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}${amount / Math.pow(10, decimals)}`);
                 swap(quote).then((isScueess) => {
+                    tradeFlag = TradeFlagValue.DEFAULT;
                     if (isScueess) {
                         logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}成功`);
                         layer0 = price;
@@ -157,6 +174,8 @@ async function sell(decimals: number) {
                         logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}失败`);
                     }
                 })
+            } else {
+                tradeFlag = TradeFlagValue.DEFAULT;
             }
         }
     );
@@ -241,23 +260,27 @@ async function updateScreenShow() {
 async function autoTrade() {
     const tokenA_decimals = userSetting.tokenADecimals;
     const tokenB_decimals = userSetting.tokenBDecimals;
-    while (true) {
+    while (autoTradeFlag) {
         try {
             updateScreenShow();
             const price = await getPrice(TOKEN_B, TOKEN_A);
             if (!price) {
                 return;
             }
-            //如果没有买卖点
+            // 如果没有买卖点
             if (layer1 === -1 || layer_1 === -1) {
                 layer0 = price;
                 calculateLayer1();
                 calculateLayer_1();
             }
+            // 如果当前存在交易直接返回
+            if (tradeFlag != TradeFlagValue.DEFAULT) {
+                return
+            }
             if (price > layer1) {
                 const tokenBalance = await getTokenBalance(TOKEN_B);
                 const totalTokenBalance = tokenBalance * price;
-                //如果剩余的不够卖
+                // 如果剩余的不够卖
                 if (totalTokenBalance <= 5) {
                     await buy(tokenA_decimals)
                 } else {
@@ -296,11 +319,13 @@ async function signalHandler(signal: NodeJS.SignalsListener) {
     logger.info('程序被中断 (Ctrl+C)');
     if (TERMINATION_SELL_ALL) {
         try {
+            autoTradeFlag = false;
+            logger.info('⌛️请等待平仓完成。。。');
             await sellAll();
-            logger.info('所有操作已完成，程序正常退出');
+            logger.info('✅所有操作已完成，程序正常退出');
             process.exit(0); // 正常退出
         } catch (error) {
-            logger.error(`发生错误：${error}`);
+            logger.error(`❌发生错误：${error}`);
             process.exit(1); // 异常退出
         }
     }
