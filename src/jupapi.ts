@@ -9,6 +9,7 @@ import EnvKeys from './envKeys';
 import axios from 'axios';
 import fs from 'fs';
 import { promises as fsPromises } from 'fs';
+import Logger from './utils/logger';
 
 const jupiterQuoteApi = createJupiterApiClient();
 const wallet = new Wallet(
@@ -21,6 +22,8 @@ const connection = new Connection(API_ENDPOINT);
 // 定义ANSI转义序列来设置绿色和重置颜色
 const green = '\x1b[32m';
 const reset = '\x1b[0m';
+//日志
+let logger: Logger = Logger.getInstance();;
 
 
 /**
@@ -40,8 +43,9 @@ export async function quote(tokenA: string, tokenB: string, amount: number) {
         asLegacyTransaction: false,
     });
     //console.log(quote)
+    logger.info(`quote: ${quote}`);
     if (!quote) {
-        console.error("unable to quote");
+        logger.error("unable to quote");
         return;
     }
     return quote;
@@ -83,8 +87,8 @@ export async function swap(quote: QuoteResponse) {
     if (err) {
         // Simulation error, we can check the logs for more details
         // If you are getting an invalid account error, make sure that you have the input mint account to actually swap from.
-        console.error("Simulation Error:");
-        console.error({ err, logs });
+        logger.error("Simulation Error:");
+        logger.error(`${{ err, logs }}`);
         return false;
     }
 
@@ -102,16 +106,16 @@ export async function swap(quote: QuoteResponse) {
 
     // If we are not getting a response back, the transaction has not confirmed.
     if (!transactionResponse) {
-        console.error("Transaction not confirmed");
+        logger.error("Transaction not confirmed");
         return false;
     }
 
     if (transactionResponse.meta?.err) {
-        console.error(transactionResponse.meta?.err);
+        logger.error(`${transactionResponse.meta?.err}`);
         return false;
     }
 
-    console.log("交易哈希 ", `https://solscan.io/tx/${signature}`);
+    logger.info(`交易哈希 https://solscan.io/tx/${signature}`);
     return true;
 }
 

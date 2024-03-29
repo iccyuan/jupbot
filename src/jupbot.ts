@@ -6,15 +6,18 @@ import wait from './utils/wait';
 import UserSetting from './settings'
 import { formatDate, getVersion, formatTimeDifference, roundToDecimal } from './utils/util'
 import { clearScreen, moveTo, updateScreen } from './utils/screenUpdater'
+import Logger from './utils/logger';
 
 const USDC_MINT_ADDRESS = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
 
+//只能是USDC
 const TOKEN_A = EnvConfig.getMandatory(EnvKeys.TOKEN_A);
 const TOKEN_B = EnvConfig.getMandatory(EnvKeys.TOKEN_B);
 const AMOUNT = Number(EnvConfig.getMandatory(EnvKeys.AMOUNT));
 // 转成百分比形式
 const PROFIT = Number(EnvConfig.getMandatory(EnvKeys.PROFIT)) / 100;
+// 用户终止是否卖出所有
 const TERMINATION_SELL_ALL = EnvConfig.getBoolean(EnvKeys.TERMINATION_SELL_ALL, false);
 
 // 定义ANSI转义序列来设置绿色和重置颜色
@@ -24,11 +27,11 @@ const orange = '\x1b[33m';
 const red = '\x1b[31m';
 
 // 记录当前买或者卖的价格
-let layer0: number = 0;
+let layer0: number = -1;
 // 卖价
-let layer1: number = 0;
+let layer1: number = -1;
 // 买价
-let layer_1: number = 0;
+let layer_1: number = -1;
 // 开始运行时间
 let startTime: Date;
 
@@ -48,15 +51,15 @@ let buyTime = 0;
 let sellTime = 0;
 // 总共购买的数量
 let totalBuyAmount = 0;
+//日志
+let logger: Logger = Logger.getInstance();;
 
 async function start() {
-    console.log("开始初始化");
+    logger.info("开始初始化");
     await init();
-    console.log("初始化完成✅");
-    await buy(userSetting.tokenADecimals)
-    console.log("开始🚀🌕");
-    clearScreen();
-    montionPrice();
+    logger.info("初始化完成✅");
+    logger.info("开始🚀🌕");
+    autoTrade();
 }
 
 async function init() {
@@ -70,7 +73,7 @@ async function init() {
         userSetting.tokenAAddress = tokenA.address;
         userSetting.tokenADecimals = tokenA.decimals;
     } else {
-        console.log("请检查TokenA是否正确")
+        logger.error("请检查TokenA是否正确");
         process.exit(0);
     }
     if (tokenB) {
@@ -78,7 +81,7 @@ async function init() {
         userSetting.tokenBAddress = tokenB.address;
         userSetting.tokenBDecimals = tokenB.decimals;
     } else {
-        console.log("请检查TokenB是否正确")
+        logger.error("请检查TokeB是否正确");
         process.exit(0);
     }
 
@@ -110,17 +113,17 @@ async function buy(decimals: number) {
     await quote(TOKEN_A, TOKEN_B, amount).then(
         (quote) => {
             if (quote) {
-                console.log("\u{1F4C9}买入", userSetting.tokenBSymbol, amount / Math.pow(10, decimals));
+                logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}${amount / Math.pow(10, decimals)}`);
                 swap(quote).then((isScueess) => {
                     if (isScueess) {
-                        console.log("\u{1F4C9}买入", userSetting.tokenBSymbol, "成功");
+                        logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}成功`);
                         layer0 = price;
                         calculateLayer1();
                         calculateLayer_1();
                         buyTime++;
                         totalBuyAmount += Number(quote.outAmount);
                     } else {
-                        console.log("\u{1F4C9}买入", userSetting.tokenBSymbol, "失败");
+                        logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}失败`);
                     }
                 })
             }
@@ -141,17 +144,17 @@ async function sell(decimals: number) {
     await quote(TOKEN_B, TOKEN_A, amount).then(
         (quote) => {
             if (quote) {
-                console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, amount / Math.pow(10, decimals));
+                logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}${amount / Math.pow(10, decimals)}`);
                 swap(quote).then((isScueess) => {
                     if (isScueess) {
-                        console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, "成功");
+                        logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}成功`);
                         layer0 = price;
                         calculateLayer1();
                         calculateLayer_1();
                         sellTime++;
                         totalBuyAmount -= Number(quote.inAmount);
                     } else {
-                        console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, "失败");
+                        logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}失败`);
                     }
                 })
             }
@@ -172,7 +175,7 @@ async function sellAll() {
     }
     let amount = (AMOUNT * (buyTime - sellTime)) / price;
     if (amount <= 0) {
-        console.log("无需卖出")
+        logger.info("无需卖出");
         return;
     }
     amount = Math.floor(amount * Math.pow(10, userSetting.tokenBDecimals));
@@ -182,13 +185,13 @@ async function sellAll() {
             console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, amount / Math.pow(10, userSetting.tokenBDecimals));
             const isSuccess = await swap(quote_);
             if (isSuccess) {
-                console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, "成功");
+                logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}成功`);
             } else {
-                console.log("\u{1F4C8}卖出", userSetting.tokenBSymbol, "失败");
+                logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}失败`);
             }
         }
     } catch (error) {
-        console.error('卖出过程中发生错误：', error);
+        logger.error(`卖出过程中发生错误：${error}`);
         throw error; // 抛出错误，以便在上层处理
     }
 }
@@ -235,7 +238,7 @@ async function updateScreenShow() {
 }
 
 
-async function montionPrice() {
+async function autoTrade() {
     const tokenA_decimals = userSetting.tokenADecimals;
     const tokenB_decimals = userSetting.tokenBDecimals;
     while (true) {
@@ -245,6 +248,12 @@ async function montionPrice() {
             if (!price) {
                 return;
             }
+            //如果没有买卖点
+            if (layer1 === -1 || layer_1 === -1) {
+                layer0 = price;
+                calculateLayer1();
+                calculateLayer_1();
+            }
             if (price > layer1) {
                 const tokenBalance = await getTokenBalance(TOKEN_B);
                 const totalTokenBalance = tokenBalance * price;
@@ -253,9 +262,10 @@ async function montionPrice() {
                     await buy(tokenA_decimals)
                 } else {
                     // 只有当购买过才触发卖
-                    if (sellTime <= buyTime) {
+                    if (buyTime > 0 && sellTime <= buyTime) {
                         await sell(tokenB_decimals)
                     } else {
+                        layer0 = price;
                         calculateLayer1();
                         calculateLayer_1();
                     }
@@ -270,7 +280,7 @@ async function montionPrice() {
                 }
             }
         } catch (error) {
-            console.log(error);
+            logger.error(`出现未知错误：${error}`);
         }
         await wait(Number(EnvConfig.get(EnvKeys.MONTION_PRICE_DURATION, "5000")));
     }
@@ -283,14 +293,14 @@ async function montionPrice() {
  * @param {NodeJS.SignalsListener} signal
  */
 async function signalHandler(signal: NodeJS.SignalsListener) {
-    console.log('程序被中断 (Ctrl+C)');
+    logger.info('程序被中断 (Ctrl+C)');
     if (TERMINATION_SELL_ALL) {
         try {
             await sellAll();
-            console.log('所有操作已完成，程序正常退出');
+            logger.info('所有操作已完成，程序正常退出');
             process.exit(0); // 正常退出
         } catch (error) {
-            console.error('发生错误：', error);
+            logger.error(`发生错误：${error}`);
             process.exit(1); // 异常退出
         }
     }
