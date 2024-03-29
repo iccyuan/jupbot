@@ -11,10 +11,12 @@ import {
 } from '@solana/web3.js';
 import { getPrice, getTokens } from './jupapi'
 import { TOKEN_PROGRAM_ID, getMint } from '@solana/spl-token';
+import Logger from './utils/logger';
+let logger: Logger = Logger.getInstance();;
 
 // 创建连接
 const connection = new Connection(EnvConfig.get(EnvKeys.API_ENDPOINT, clusterApiUrl('mainnet-beta')),
-    { commitment: "confirmed", confirmTransactionInitialTimeout: 5000 });
+    { commitment: "confirmed", confirmTransactionInitialTimeout: 5000, disableRetryOnRateLimit: true });
 
 const wallet = new Wallet(
     Keypair.fromSecretKey(bs58.decode(EnvConfig.getMandatory(EnvKeys.PRIVATE_KEY)))
@@ -41,24 +43,28 @@ async function getTokenAccounts(connection: Connection, address: PublicKey, toke
 }
 
 export async function getTokenBalance(tokenMintAddress: string): Promise<number> {
-    if (SOL_MINT_ADDRESS === tokenMintAddress) {
-        const lamports = await connection.getBalance(wallet.publicKey);
-        const solBalance = lamports / solanaWeb3.LAMPORTS_PER_SOL;
-        //console.log(solBalance)
-        return solBalance;
-    } else {
-        const tokenAccounts = await getTokenAccounts(
-            connection,
-            wallet.publicKey,
-            tokenMintAddress,
-        );
-        if (tokenAccounts.value.length > 0) {
-            const balance =
-                tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount;
-            //console.log(balance)
-            return balance;
-        }
+    try {
+        if (SOL_MINT_ADDRESS === tokenMintAddress) {
+            const lamports = await connection.getBalance(wallet.publicKey);
+            const solBalance = lamports / solanaWeb3.LAMPORTS_PER_SOL;
+            //console.log(solBalance)
+            return solBalance;
+        } else {
+            const tokenAccounts = await getTokenAccounts(
+                connection,
+                wallet.publicKey,
+                tokenMintAddress,
+            );
+            if (tokenAccounts.value.length > 0) {
+                const balance =
+                    tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount;
+                //console.log(balance)
+                return balance;
+            }
 
+        }
+    } catch (error) {
+        logger.error(`getTokenBalance:${error}`);
     }
     return 0;
 }

@@ -7,7 +7,7 @@ class Logger {
 
     private constructor() {
         // 设置日志文件的路径
-        const logFileName = `${new Date().toISOString().replace(/[:TZ\.\-]/g, '')}.log`;
+        const logFileName = `${new Date().toISOString().replace(/-|T|:/g, '').slice(0, 12)}.log`;
         this.logFilePath = path.join(__dirname, 'logs', logFileName);
 
         // 确保logs目录存在

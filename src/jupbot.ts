@@ -265,7 +265,8 @@ async function autoTrade() {
             updateScreenShow();
             const price = await getPrice(TOKEN_B, TOKEN_A);
             if (!price) {
-                return;
+                await autoTradeWait();
+                continue;
             }
             // 如果没有买卖点
             if (layer1 === -1 || layer_1 === -1) {
@@ -275,7 +276,8 @@ async function autoTrade() {
             }
             // 如果当前存在交易直接返回
             if (tradeFlag != TradeFlagValue.DEFAULT) {
-                return
+                await autoTradeWait();
+                continue;
             }
             if (price > layer1) {
                 const tokenBalance = await getTokenBalance(TOKEN_B);
@@ -303,11 +305,15 @@ async function autoTrade() {
                 }
             }
         } catch (error) {
-            logger.error(`出现未知错误：${error}`);
+            logger.error(`autoTrade:${error}`);
         }
-        await wait(Number(EnvConfig.get(EnvKeys.MONTION_PRICE_DURATION, "5000")));
+        await autoTradeWait();
     }
 
+}
+
+async function autoTradeWait() {
+    await wait(Number(EnvConfig.get(EnvKeys.MONTION_PRICE_DURATION, "5000")));
 }
 
 

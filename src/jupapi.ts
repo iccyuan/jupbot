@@ -18,7 +18,7 @@ const wallet = new Wallet(
 
 const API_ENDPOINT = EnvConfig.get(EnvKeys.API_ENDPOINT, clusterApiUrl('mainnet-beta'))
 const connection = new Connection(API_ENDPOINT,
-    { commitment: "confirmed", confirmTransactionInitialTimeout: 5000 });
+    { commitment: "confirmed", confirmTransactionInitialTimeout: 5000, disableRetryOnRateLimit: true });
 
 // 定义ANSI转义序列来设置绿色和重置颜色
 const green = '\x1b[32m';
@@ -162,14 +162,18 @@ export async function getTokensObject(): Promise<{ [address: string]: Token }> {
  * @returns tokenA(ids) 价值多少(vsToken) token B
  */
 export async function getPrice(ids: string, vsToken: string): Promise<number | undefined> {
-    const response = await axios.get(`https://price.jup.ag/v4/price?ids=${ids}&vsToken=${vsToken}`);
-    const data = response.data.data;
-    // 检查data是否存在，并且是否包含指定的id
-    if (data && data[ids]) {
-        const price = data[ids].price;
-        return price;
-    } else {
-        // 如果data未定义或不包含指定的id，返回undefined
-        return undefined;
+    try {
+        const response = await axios.get(`https://price.jup.ag/v4/price?ids=${ids}&vsToken=${vsToken}`);
+        const data = response.data.data;
+        // 检查data是否存在，并且是否包含指定的id
+        if (data && data[ids]) {
+            const price = data[ids].price;
+            return price;
+        } else {
+            // 如果data未定义或不包含指定的id，返回undefined
+            return undefined;
+        }
+    } catch (error) {
+        logger.error(`getPrice:${error}`);
     }
 }
