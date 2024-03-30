@@ -62,7 +62,7 @@ export async function swap(quote: QuoteResponse) {
                 dynamicComputeUnitLimit: true,
                 prioritizationFeeLamports: "auto",
                 // prioritizationFeeLamports: {
-                //   autoMultiplier: 2,
+                //     autoMultiplier: 2,
                 // },
             },
         });
@@ -77,21 +77,24 @@ export async function swap(quote: QuoteResponse) {
         transaction.sign([wallet.payer]);
         const signature = getSignature(transaction);
 
-        // We first simulate whether the transaction would be successful
-        const { value: simulatedTransactionResponse } =
-            await connection.simulateTransaction(transaction, {
-                replaceRecentBlockhash: true,
-                commitment: "processed",
-            });
-        const { err, logs } = simulatedTransactionResponse;
+        // 是否开启模拟交易
+        if (EnvConfig.getBoolean(EnvKeys.SIMULATE_TRANSCATION, true)) {
+            // We first simulate whether the transaction would be successful
+            const { value: simulatedTransactionResponse } =
+                await connection.simulateTransaction(transaction, {
+                    replaceRecentBlockhash: true,
+                    commitment: "processed",
+                });
+            const { err, logs } = simulatedTransactionResponse;
 
-        if (err) {
-            // Simulation error, we can check the logs for more details
-            // If you are getting an invalid account error, make sure that you have the input mint account to actually swap from.
-            logger.error("swap: Simulation Error:");
-            logger.info(`swap: ${JSON.stringify(err, null, 2)}`);
-            logger.error(`swap: ${logs}`);
-            return false;
+            if (err) {
+                // Simulation error, we can check the logs for more details
+                // If you are getting an invalid account error, make sure that you have the input mint account to actually swap from.
+                logger.error("swap: Simulation Error:");
+                logger.info(`swap: ${JSON.stringify(err, null, 2)}`);
+                logger.error(`swap: ${logs}`);
+                return false;
+            }
         }
 
         const serializedTransaction = Buffer.from(transaction.serialize());
