@@ -99,7 +99,7 @@ async function init() {
 }
 
 /**
- * 计算卖出未知
+ * 计算卖出位置
  */
 function calculateLayer1() {
     layer1 = layer0 + (layer0 * PROFIT);
@@ -221,7 +221,7 @@ async function updateScreenShow() {
     const maxLength = 50;
     // 保留几位小数
     const toFixed = 4;
-    info += `${reset}🤖：${await getVersion()}${reset}\n`;
+    info += `${reset}🚀🌕：${await getVersion()}${reset}\n`;
     info += `${reset}运行时长：${orange}${await formatTimeDifference(startTime.getTime(), new Date().getTime())}${reset}\n`;
     info += `${reset}地址：${orange}${await getPublicKey()}${reset}\n`;
     info += `${reset}当前价格：${green}${await getPrice(TOKEN_B, TOKEN_A)}${reset}\n`;
@@ -268,16 +268,16 @@ async function autoTrade() {
                 await autoTradeWait();
                 continue;
             }
+            // 如果当前存在交易直接跳过
+            if (tradeFlag != TradeFlagValue.DEFAULT) {
+                await autoTradeWait();
+                continue;
+            }
             // 如果没有买卖点
             if (layer1 === -1 || layer_1 === -1) {
                 layer0 = price;
                 calculateLayer1();
                 calculateLayer_1();
-            }
-            // 如果当前存在交易直接返回
-            if (tradeFlag != TradeFlagValue.DEFAULT) {
-                await autoTradeWait();
-                continue;
             }
             if (price > layer1) {
                 const tokenBalance = await getTokenBalance(TOKEN_B);
