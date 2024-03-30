@@ -287,8 +287,12 @@ async function autoTrade() {
             }
             if (price > layer1) {
                 const tokenBalance = await getTokenBalance(TOKEN_B);
+                if (!tokenBalance) {
+                    await autoTradeWait();
+                    continue;
+                }
                 const totalTokenBalance = tokenBalance * price;
-                // 如果剩余的不够卖
+                // 如果剩余的不够卖,jup限制最小为5
                 if (totalTokenBalance <= 5) {
                     await buy(tokenA_decimals)
                 } else {
