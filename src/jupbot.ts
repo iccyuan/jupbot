@@ -221,7 +221,7 @@ async function updateScreenShow() {
     const maxLength = 50;
     // 保留几位小数
     const toFixed = 4;
-    info += `${reset}🚀🌕：${await getVersion()}${reset}\n`;
+    info += `${reset}🤖：${await getVersion()}${reset}\n`;
     info += `${reset}运行时长：${orange}${await formatTimeDifference(startTime.getTime(), new Date().getTime())}${reset}\n`;
     info += `${reset}地址：${orange}${await getPublicKey()}${reset}\n`;
     info += `${reset}当前价格：${green}${await getPrice(TOKEN_B, TOKEN_A)}${reset}\n`;
