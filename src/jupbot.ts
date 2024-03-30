@@ -114,12 +114,12 @@ function calculateLayer_1() {
 
 
 async function buy(decimals: number) {
-    tradeFlag = TradeFlagValue.BUY;
     //这里固定TokenA 必须是USDC，避免做过多的逻辑判断
     const price = await getPrice(TOKEN_B, TOKEN_A);
     if (!price) {
         return;
     }
+    tradeFlag = TradeFlagValue.BUY;
     let amount = AMOUNT;
     amount = Math.floor(amount * Math.pow(10, decimals));
     await quote(TOKEN_A, TOKEN_B, amount).then(
@@ -129,9 +129,11 @@ async function buy(decimals: number) {
                 swap(quote).then((isScueess) => {
                     tradeFlag = TradeFlagValue.DEFAULT;
                     if (isScueess) {
-                        //根据quote获取实际价格
-                        layer0 = (Number(quote.inAmount) / Math.pow(10, userSetting.tokenADecimals))
-                            / (Number(quote.outAmount) / Math.pow(10, userSetting.tokenBDecimals));
+                        // 根据quote获取实际价格
+                        // layer0 = (Number(quote.inAmount) / Math.pow(10, userSetting.tokenADecimals))
+                        //     / (Number(quote.outAmount) / Math.pow(10, userSetting.tokenBDecimals));
+                        // 防止频繁买不实用实际价格
+                        layer0 = price;
                         calculateLayer1();
                         calculateLayer_1();
                         buyTime++;
@@ -150,13 +152,13 @@ async function buy(decimals: number) {
 }
 
 async function sell(decimals: number) {
-    tradeFlag = TradeFlagValue.SELL;
     //这里固定TokenA 必须是USDC，避免做过多的逻辑判断
     //得到TokenB 单价
     const price = await getPrice(TOKEN_B, TOKEN_A);
     if (!price) {
         return;
     }
+    tradeFlag = TradeFlagValue.SELL;
     let amount = AMOUNT / price;
     amount = Math.floor(amount * Math.pow(10, decimals));
     await quote(TOKEN_B, TOKEN_A, amount).then(
