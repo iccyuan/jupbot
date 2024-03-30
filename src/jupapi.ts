@@ -53,71 +53,77 @@ export async function quote(tokenA: string, tokenB: string, amount: number) {
 }
 
 export async function swap(quote: QuoteResponse) {
-    // Get serialized transaction
-    const swapResult = await jupiterQuoteApi.swapPost({
-        swapRequest: {
-            quoteResponse: quote,
-            userPublicKey: wallet.publicKey.toBase58(),
-            dynamicComputeUnitLimit: true,
-            prioritizationFeeLamports: "auto",
-            // prioritizationFeeLamports: {
-            //   autoMultiplier: 2,
-            // },
-        },
-    });
-
-    //console.dir(swapResult, { depth: null });
-
-    // Serialize the transaction
-    const swapTransactionBuf = Buffer.from(swapResult.swapTransaction, "base64");
-    var transaction = VersionedTransaction.deserialize(swapTransactionBuf);
-
-    // Sign the transaction
-    transaction.sign([wallet.payer]);
-    const signature = getSignature(transaction);
-
-    // We first simulate whether the transaction would be successful
-    const { value: simulatedTransactionResponse } =
-        await connection.simulateTransaction(transaction, {
-            replaceRecentBlockhash: true,
-            commitment: "processed",
+    try {
+        // Get serialized transaction
+        const swapResult = await jupiterQuoteApi.swapPost({
+            swapRequest: {
+                quoteResponse: quote,
+                userPublicKey: wallet.publicKey.toBase58(),
+                dynamicComputeUnitLimit: true,
+                prioritizationFeeLamports: "auto",
+                // prioritizationFeeLamports: {
+                //   autoMultiplier: 2,
+                // },
+            },
         });
-    const { err, logs } = simulatedTransactionResponse;
 
-    if (err) {
-        // Simulation error, we can check the logs for more details
-        // If you are getting an invalid account error, make sure that you have the input mint account to actually swap from.
-        logger.error("Simulation Error:");
-        logger.error(`${err.toString()}`);
-        logger.error(`${logs}`);
+        //console.dir(swapResult, { depth: null });
+
+        // Serialize the transaction
+        const swapTransactionBuf = Buffer.from(swapResult.swapTransaction, "base64");
+        var transaction = VersionedTransaction.deserialize(swapTransactionBuf);
+
+        // Sign the transaction
+        transaction.sign([wallet.payer]);
+        const signature = getSignature(transaction);
+
+        // We first simulate whether the transaction would be successful
+        const { value: simulatedTransactionResponse } =
+            await connection.simulateTransaction(transaction, {
+                replaceRecentBlockhash: true,
+                commitment: "processed",
+            });
+        const { err, logs } = simulatedTransactionResponse;
+
+        if (err) {
+            // Simulation error, we can check the logs for more details
+            // If you are getting an invalid account error, make sure that you have the input mint account to actually swap from.
+            logger.error("Simulation Error:");
+            logger.info(`swap：${JSON.stringify(err, null, 2)}`);
+            logger.error(`${logs}`);
+            return false;
+        }
+
+        const serializedTransaction = Buffer.from(transaction.serialize());
+        const blockhash = transaction.message.recentBlockhash;
+
+        const transactionResponse = await transactionSenderAndConfirmationWaiter({
+            connection,
+            serializedTransaction,
+            blockhashWithExpiryBlockHeight: {
+                blockhash,
+                lastValidBlockHeight: swapResult.lastValidBlockHeight,
+            },
+        });
+
+        // If we are not getting a response back, the transaction has not confirmed.
+        if (!transactionResponse) {
+            logger.error("Transaction not confirmed");
+            return false;
+        }
+
+        if (transactionResponse.meta?.err) {
+            logger.error(`${transactionResponse.meta?.err}`);
+            return false;
+        }
+
+        logger.info(`交易哈希 https://solscan.io/tx/${signature}`);
+        return true;
+    } catch (error) {
+        logger.error(`swap：${(error as Error).message}`);
         return false;
     }
 
-    const serializedTransaction = Buffer.from(transaction.serialize());
-    const blockhash = transaction.message.recentBlockhash;
-
-    const transactionResponse = await transactionSenderAndConfirmationWaiter({
-        connection,
-        serializedTransaction,
-        blockhashWithExpiryBlockHeight: {
-            blockhash,
-            lastValidBlockHeight: swapResult.lastValidBlockHeight,
-        },
-    });
-
-    // If we are not getting a response back, the transaction has not confirmed.
-    if (!transactionResponse) {
-        logger.error("Transaction not confirmed");
-        return false;
-    }
-
-    if (transactionResponse.meta?.err) {
-        logger.error(`${transactionResponse.meta?.err}`);
-        return false;
-    }
-
-    logger.info(`交易哈希 https://solscan.io/tx/${signature}`);
-    return true;
 }
 
 type Token = {
