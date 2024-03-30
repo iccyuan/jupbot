@@ -239,6 +239,8 @@ async function updateScreenShow() {
             info += `${reset}亏损：${red}${roundToDecimal(profitPec, 5) * 100}%(${roundToDecimal(profit, 2)}USDC)${reset}\n`;
         }
     }
+    info += `${reset}均价：${green}${((buyTime - sellTime) * AMOUNT) / totalBuyAmount}${reset}`.padEnd(maxLength);
+    info += `${reset}总共购买：${green}${totalBuyAmount}${reset}\n`;
     info += `${reset}买入：${green}${layer_1}${reset}`.padEnd(maxLength);
     info += `${reset}卖出：${green}${layer1}${reset}\n`;
     info += `${reset}买入：${green}${buyTime}${reset}`.padEnd(maxLength);
