@@ -115,26 +115,28 @@ function calculateLayer_1() {
 
 async function buy(decimals: number) {
     tradeFlag = TradeFlagValue.BUY;
+    //这里固定TokenA 必须是USDC，避免做过多的逻辑判断
     const price = await getPrice(TOKEN_B, TOKEN_A);
     if (!price) {
         return;
     }
-    //这里固定TokenA 必须是USDC，避免做过多的逻辑判断
     let amount = AMOUNT;
     amount = Math.floor(amount * Math.pow(10, decimals));
     await quote(TOKEN_A, TOKEN_B, amount).then(
         (quote) => {
             if (quote) {
-                logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}${amount / Math.pow(10, decimals)}`);
+                logger.info(`\u{1F4C9}开始买入${userSetting.tokenBSymbol} ${amount / Math.pow(10, decimals)}${userSetting.tokenASymbol}`);
                 swap(quote).then((isScueess) => {
                     tradeFlag = TradeFlagValue.DEFAULT;
                     if (isScueess) {
-                        logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}成功`);
-                        layer0 = price;
+                        //根据quote获取实际价格
+                        layer0 = (Number(quote.inAmount) / Math.pow(10, userSetting.tokenADecimals))
+                            / (Number(quote.outAmount) / Math.pow(10, userSetting.tokenBDecimals));
                         calculateLayer1();
                         calculateLayer_1();
                         buyTime++;
                         totalBuyAmount += Number(quote.outAmount);
+                        logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}成功,买入价${layer0}`);
                     } else {
                         logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}失败`);
                     }
@@ -160,16 +162,18 @@ async function sell(decimals: number) {
     await quote(TOKEN_B, TOKEN_A, amount).then(
         (quote) => {
             if (quote) {
-                logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}${amount / Math.pow(10, decimals)}`);
+                logger.info(`\u{1F4C8}开始卖出${userSetting.tokenBSymbol}${amount / Math.pow(10, decimals)}`);
                 swap(quote).then((isScueess) => {
                     tradeFlag = TradeFlagValue.DEFAULT;
                     if (isScueess) {
-                        logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}成功`);
-                        layer0 = price;
+                        //根据quote获取实际价格
+                        layer0 = (Number(quote.inAmount) / Math.pow(10, userSetting.tokenBDecimals))
+                            / (Number(quote.outAmount) / Math.pow(10, userSetting.tokenADecimals));
                         calculateLayer1();
                         calculateLayer_1();
                         sellTime++;
                         totalBuyAmount -= Number(quote.inAmount);
+                        logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}成功,卖出价${layer0}`);
                     } else {
                         logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}失败`);
                     }
@@ -211,7 +215,7 @@ async function sellAll() {
         }
     } catch (error) {
         logger.error(`卖出过程中发生错误：${error}`);
-        throw error; // 抛出错误，以便在上层处理
+        throw error;
     }
 }
 
@@ -239,8 +243,8 @@ async function updateScreenShow() {
             info += `${reset}亏损：${red}${roundToDecimal(profitPec, 5) * 100}%(${roundToDecimal(profit, 2)}USDC)${reset}\n`;
         }
     }
-    info += `${reset}均价：${green}${((buyTime - sellTime) * AMOUNT) / totalBuyAmount}${reset}`.padEnd(maxLength);
-    info += `${reset}总共购买：${green}${totalBuyAmount}${reset}\n`;
+    info += `${reset}均价：${green}${((buyTime - sellTime) * AMOUNT) / (totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals))}${reset}`.padEnd(maxLength);
+    info += `${reset}总共购买：${green}${totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals)}${reset}\n`;
     info += `${reset}买入：${green}${layer_1}${reset}`.padEnd(maxLength);
     info += `${reset}卖出：${green}${layer1}${reset}\n`;
     info += `${reset}买入：${green}${buyTime}${reset}`.padEnd(maxLength);

@@ -44,7 +44,7 @@ export async function quote(tokenA: string, tokenB: string, amount: number) {
         asLegacyTransaction: false,
     });
     if (!quote) {
-        logger.error("unable to quote");
+        logger.error("quote: unable to quote");
         return;
     }
     logger.info(`quote: ${JSON.stringify(quote, null, 2)}`);
@@ -88,9 +88,9 @@ export async function swap(quote: QuoteResponse) {
         if (err) {
             // Simulation error, we can check the logs for more details
             // If you are getting an invalid account error, make sure that you have the input mint account to actually swap from.
-            logger.error("Simulation Error:");
-            logger.info(`swap：${JSON.stringify(err, null, 2)}`);
-            logger.error(`${logs}`);
+            logger.error("swap: Simulation Error:");
+            logger.info(`swap: ${JSON.stringify(err, null, 2)}`);
+            logger.error(`swap: ${logs}`);
             return false;
         }
 
@@ -108,19 +108,19 @@ export async function swap(quote: QuoteResponse) {
 
         // If we are not getting a response back, the transaction has not confirmed.
         if (!transactionResponse) {
-            logger.error("Transaction not confirmed");
+            logger.error("swap: Transaction not confirmed");
             return false;
         }
 
         if (transactionResponse.meta?.err) {
-            logger.error(`${transactionResponse.meta?.err}`);
+            logger.error(`swap: ${transactionResponse.meta?.err}`);
             return false;
         }
 
-        logger.info(`交易哈希 https://solscan.io/tx/${signature}`);
+        logger.info(`swap: 交易哈希https://solscan.io/tx/${signature}`);
         return true;
     } catch (error) {
-        logger.error(`swap：${(error as Error).message}`);
+        logger.error(`swap: ${(error as Error).message.toString()}`);
         return false;
     }
 
@@ -180,6 +180,6 @@ export async function getPrice(ids: string, vsToken: string): Promise<number | u
             return undefined;
         }
     } catch (error) {
-        logger.error(`getPrice:${error}`);
+        logger.error(`getPrice: ${error}`);
     }
 }
