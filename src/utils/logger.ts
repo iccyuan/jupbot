@@ -27,7 +27,8 @@ class Logger {
     // 记录日志
     log(message: string, level: string = 'INFO'): void {
         // 获取当前时间
-        const timestamp = new Date().toISOString();
+        const timestamp = new Date().toLocaleString("zh", { hour12: false }).replace(/|/g, '');
+
         // 构建日志消息
         const logMessage = `[${timestamp}] [${level}] ${message}\n`;
 

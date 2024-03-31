@@ -62,8 +62,10 @@ let buyTime = 0;
 let sellTime = 0;
 // 总共购买的数量
 let totalBuyAmount = 0;
+// 最后一次购买价格
+let lastBuyPrice = 0;
 //日志
-let logger: Logger = Logger.getInstance();;
+let logger: Logger = Logger.getInstance();
 
 async function start() {
     logger.info("开始初始化");
@@ -114,11 +116,6 @@ function calculateLayer_1() {
 
 
 async function buy(decimals: number) {
-    //这里固定TokenA 必须是USDC，避免做过多的逻辑判断
-    const price = await getPrice(TOKEN_B, TOKEN_A);
-    if (!price) {
-        return;
-    }
     tradeFlag = TradeFlagValue.BUY;
     let amount = AMOUNT;
     amount = Math.floor(amount * Math.pow(10, decimals));
@@ -129,11 +126,13 @@ async function buy(decimals: number) {
                 swap(quote).then((isScueess) => {
                     tradeFlag = TradeFlagValue.DEFAULT;
                     if (isScueess) {
-                        // 根据quote获取实际价格
+                        //根据quote获取实际价格
                         // layer0 = (Number(quote.inAmount) / Math.pow(10, userSetting.tokenADecimals))
                         //     / (Number(quote.outAmount) / Math.pow(10, userSetting.tokenBDecimals));
                         // 防止频繁买不实用实际价格
-                        layer0 = price;
+                        //layer0 = price;
+                        // 直接使用触发价格，要注意滑点和盈利之间的间隔配置防止亏损
+                        layer0 = layer_1;
                         calculateLayer1();
                         calculateLayer_1();
                         buyTime++;
@@ -295,7 +294,7 @@ async function autoTrade() {
                 }
                 const totalTokenBalance = tokenBalance * price;
                 // 如果剩余的不够卖,jup限制最小为5
-                if (totalTokenBalance <= 5) {
+                if (totalTokenBalance <= AMOUNT) {
                     await buy(tokenA_decimals)
                 } else {
                     // 只有当购买过才触发卖
@@ -309,8 +308,8 @@ async function autoTrade() {
                 }
             } else if (price < layer_1) {
                 const usdcBalance = await getTokenBalance(TOKEN_A);
-                //如果剩余的不够买
-                if (usdcBalance <= 5) {
+                //如果剩余的不够买,jup 限制最小值为5
+                if (usdcBalance <= AMOUNT) {
                     await sell(tokenB_decimals);
                 } else {
                     await buy(tokenA_decimals);
@@ -334,13 +333,13 @@ async function autoTradeWait() {
  * @param {NodeJS.SignalsListener} signal
  */
 async function signalHandler(signal: NodeJS.SignalsListener) {
-    logger.info('程序被中断 (Ctrl+C)');
+    logger.info('👮程序被中断 (Ctrl+C)');
     if (TERMINATION_SELL_ALL) {
         try {
             autoTradeFlag = false;
             logger.info('⌛️请等待平仓完成。。。');
             await sellAll();
-            logger.info('✅所有操作已完成，程序正常退出');
+            logger.info('✅所有操作已完成，程序终止😊');
             process.exit(0); // 正常退出
         } catch (error) {
             logger.error(`❌发生错误：${error}`);
