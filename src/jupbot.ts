@@ -7,6 +7,7 @@ import UserSetting from './settings'
 import { formatDate, getVersion, formatTimeDifference, roundToDecimal } from './utils/util'
 import { clearScreen, moveTo, updateScreen } from './utils/screenUpdater'
 import Logger from './utils/logger';
+import * as readline from 'readline';
 
 const USDC_MINT_ADDRESS = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
@@ -17,8 +18,6 @@ const TOKEN_B = EnvConfig.getMandatory(EnvKeys.TOKEN_B);
 const AMOUNT = Number(EnvConfig.getMandatory(EnvKeys.AMOUNT));
 // 转成百分比形式
 const PROFIT = Number(EnvConfig.getMandatory(EnvKeys.PROFIT)) / 100;
-// 用户终止是否卖出所有
-const TERMINATION_SELL_ALL = EnvConfig.getBoolean(EnvKeys.TERMINATION_SELL_ALL, false);
 
 // 定义ANSI转义序列来设置绿色和重置颜色
 const green = '\x1b[32m';
@@ -129,9 +128,8 @@ async function buy(decimals: number) {
                         //根据quote获取实际价格
                         // layer0 = (Number(quote.inAmount) / Math.pow(10, userSetting.tokenADecimals))
                         //     / (Number(quote.outAmount) / Math.pow(10, userSetting.tokenBDecimals));
-                        // 防止频繁买不实用实际价格
-                        //layer0 = price;
                         // 直接使用触发价格，要注意滑点和盈利之间的间隔配置防止亏损
+                        // 如果使用实际价格，在价格波动情况较大的情况下会造成重复购买
                         layer0 = layer_1;
                         calculateLayer1();
                         calculateLayer_1();
@@ -168,8 +166,8 @@ async function sell(decimals: number) {
                     tradeFlag = TradeFlagValue.DEFAULT;
                     if (isScueess) {
                         //根据quote获取实际价格
-                        layer0 = (Number(quote.inAmount) / Math.pow(10, userSetting.tokenBDecimals))
-                            / (Number(quote.outAmount) / Math.pow(10, userSetting.tokenADecimals));
+                        layer0 = (Number(quote.outAmount) / Math.pow(10, userSetting.tokenADecimals))
+                            / (Number(quote.inAmount) / Math.pow(10, userSetting.tokenBDecimals));
                         calculateLayer1();
                         calculateLayer_1();
                         sellTime++;
@@ -328,24 +326,37 @@ async function autoTradeWait() {
 }
 
 
+// 创建一个接口用于读取用户输入
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
 /**
  * Do stuff and exit the process
  * @param {NodeJS.SignalsListener} signal
  */
 async function signalHandler(signal: NodeJS.SignalsListener) {
     logger.info('👮程序被中断 (Ctrl+C)');
-    if (TERMINATION_SELL_ALL) {
+    autoTradeFlag = false;
+    rl.question('是否执行卖出所有操作？ (Y/N): ', async (answer) => {
         try {
-            autoTradeFlag = false;
-            logger.info('⌛️请等待平仓完成。。。');
-            await sellAll();
-            logger.info('✅所有操作已完成，程序终止😊');
-            process.exit(0); // 正常退出
+            if (answer.toLowerCase() === 'y') {
+                logger.info('⌛️请等待平仓完成。。。');
+                await sellAll();
+                logger.info('✅所有操作已完成，程序终止😊');
+                process.exit(0); // 正常退出
+            } else {
+                logger.info('❌用户取消操作，程序终止😊');
+                process.exit(0); // 正常退出
+            }
         } catch (error) {
             logger.error(`❌发生错误：${error}`);
             process.exit(1); // 异常退出
+        } finally {
+            rl.close(); // 关闭readline接口
         }
-    }
+    });
 }
 
 process.on('SIGINT', signalHandler)
