@@ -239,10 +239,10 @@ async function updateScreenShow() {
         const profitPec = profit / (balanceInfo.token * balanceInfo.tokenPrice + balanceInfo.usdc);
         if (profit >= 0) {
             info += `${reset}盈利：${green}${roundToDecimal(profitPec, 5) * 100}%(${roundToDecimal(profit, 2)}USDC)${reset}`.padEnd(maxLength);
-            info += `${reset}总共盈利(USDC)：${green}${totalProfit / Math.pow(10, userSetting.tokenADecimals)}${reset}\n`;
+            info += `${reset}总共盈利(USDC)：${green}${(totalProfit / Math.pow(10, userSetting.tokenADecimals)) - AMOUNT * sellTime}${reset}\n`;
         } else {
             info += `${reset}亏损：${red}${roundToDecimal(profitPec, 5) * 100}%(${roundToDecimal(profit, 2)}USDC)${reset}`.padEnd(maxLength);
-            info += `${reset}总共盈利(USDC)：${green}${totalProfit / Math.pow(10, userSetting.tokenADecimals)}${reset}\n`;
+            info += `${reset}总共盈利(USDC)：${red}${(totalProfit / Math.pow(10, userSetting.tokenADecimals)) - AMOUNT * sellTime}${reset}\n`;
         }
     }
     info += `${reset}均价：${green}${((buyTime - sellTime) * AMOUNT) / (totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals))}${reset}`.padEnd(maxLength);
