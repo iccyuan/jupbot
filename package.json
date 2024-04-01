@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"description": "JupBot",
 	"author": {
-		"name": "yuanyuanchen"
+		"name": "Yuan"
 	},
 	"scripts": {
 		"trade": "ts-node src/jupbot.ts",

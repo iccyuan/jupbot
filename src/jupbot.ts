@@ -263,10 +263,10 @@ async function updateScreenShow() {
 
 
 async function autoTrade() {
-    const tokenA_decimals = userSetting.tokenADecimals;
-    const tokenB_decimals = userSetting.tokenBDecimals;
     while (autoTradeFlag) {
         try {
+            const tokenA_decimals = userSetting.tokenADecimals;
+            const tokenB_decimals = userSetting.tokenBDecimals;
             updateScreenShow();
             const price = await getPrice(TOKEN_B, TOKEN_A);
             if (!price) {
@@ -326,6 +326,7 @@ async function autoTradeWait() {
 }
 
 
+
 // 创建一个接口用于读取用户输入
 const rl = readline.createInterface({
     input: process.stdin,
@@ -336,32 +337,37 @@ const rl = readline.createInterface({
  * Do stuff and exit the process
  * @param {NodeJS.SignalsListener} signal
  */
-async function signalHandler(signal: NodeJS.SignalsListener) {
+function signalHandler(signal: NodeJS.SignalsListener) {
     logger.info('👮程序被中断 (Ctrl+C)');
     autoTradeFlag = false;
-    rl.question('是否执行卖出所有操作？ (Y/N): ', async (answer) => {
+
+    rl.question('是否按市价平仓？ (Y/N): ', async (answer) => {
         try {
-            if (answer.toLowerCase() === 'y') {
+            if (answer.toUpperCase() === 'Y') {
                 logger.info('⌛️请等待平仓完成。。。');
+                if (tradeFlag != TradeFlagValue.DEFAULT) {
+                    logger.info('⌛️请耐心等待，正在等待其他交易完成。。。');
+                    await wait(10000);
+                }
                 await sellAll();
                 logger.info('✅所有操作已完成，程序终止😊');
+                rl.close(); // 关闭readline接口
                 process.exit(0); // 正常退出
             } else {
                 logger.info('❌用户取消操作，程序终止😊');
+                rl.close(); // 关闭readline接口
                 process.exit(0); // 正常退出
             }
         } catch (error) {
             logger.error(`❌发生错误：${error}`);
             process.exit(1); // 异常退出
-        } finally {
-            rl.close(); // 关闭readline接口
         }
     });
 }
 
-process.on('SIGINT', signalHandler)
-process.on('SIGTERM', signalHandler)
-process.on('SIGQUIT', signalHandler)
-
-
 start()
+
+
+rl.on('SIGINT', signalHandler);
+rl.on('SIGTERM', signalHandler)
+rl.on('SIGQUIT', signalHandler)
