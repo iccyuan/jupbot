@@ -61,8 +61,8 @@ let buyTime = 0;
 let sellTime = 0;
 // 总共购买的数量
 let totalBuyAmount = 0;
-// 最后一次购买价格
-let lastBuyPrice = 0;
+// 总共盈利
+let totalProfit = 0;
 //日志
 let logger: Logger = Logger.getInstance();
 
@@ -172,6 +172,7 @@ async function sell(decimals: number) {
                         calculateLayer_1();
                         sellTime++;
                         totalBuyAmount -= Number(quote.inAmount);
+                        totalProfit += Number(quote.outAmount);
                         logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}成功,卖出价${layer0}`);
                     } else {
                         logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}失败`);
@@ -225,21 +226,23 @@ async function updateScreenShow() {
     // 保留几位小数
     const toFixed = 4;
     info += `${reset}🚀🌕：${await getVersion()}${reset}\n`;
+    info += `${reset}当前时间：${orange}${await formatDate(new Date())}${reset}\n`;
     info += `${reset}运行时长：${orange}${await formatTimeDifference(startTime.getTime(), new Date().getTime())}${reset}\n`;
-    info += `${reset}地址：${orange}${await getPublicKey()}${reset}\n`;
+    info += `${reset}钱包地址：${orange}${await getPublicKey()}${reset}\n`;
     info += `${reset}当前价格：${green}${await getPrice(TOKEN_B, TOKEN_A)}${reset}\n`;
     if (balanceInfo.tokenPrice) {
         //计算盈利百分比,利用总共购买的Token价值和购买金额计算
         const totalTokenPrice = (totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals)) * balanceInfo.tokenPrice;
+        //当前持仓盈利
         const profit = totalTokenPrice - ((buyTime - sellTime) * AMOUNT);
-        //盈利百分比
+        //当前持仓盈利百分比
         const profitPec = profit / (balanceInfo.token * balanceInfo.tokenPrice + balanceInfo.usdc);
         if (profit >= 0) {
-            info += `${reset}时间：${green}${await formatDate(new Date())}${reset}`.padEnd(maxLength);
-            info += `${reset}盈利：${green}${roundToDecimal(profitPec, 5) * 100}%(${roundToDecimal(profit, 2)}USDC)${reset}\n`;
+            info += `${reset}盈利：${green}${roundToDecimal(profitPec, 5) * 100}%(${roundToDecimal(profit, 2)}USDC)${reset}`.padEnd(maxLength);
+            info += `${reset}总共盈利(USDC)：${green}${totalProfit / Math.pow(10, userSetting.tokenADecimals)}${reset}\n`;
         } else {
-            info += `${reset}时间：${green}${await formatDate(new Date())}${reset}`.padEnd(maxLength);
-            info += `${reset}亏损：${red}${roundToDecimal(profitPec, 5) * 100}%(${roundToDecimal(profit, 2)}USDC)${reset}\n`;
+            info += `${reset}亏损：${red}${roundToDecimal(profitPec, 5) * 100}%(${roundToDecimal(profit, 2)}USDC)${reset}`.padEnd(maxLength);
+            info += `${reset}总共盈利(USDC)：${green}${totalProfit / Math.pow(10, userSetting.tokenADecimals)}${reset}\n`;
         }
     }
     info += `${reset}均价：${green}${((buyTime - sellTime) * AMOUNT) / (totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals))}${reset}`.padEnd(maxLength);
