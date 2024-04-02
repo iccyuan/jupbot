@@ -219,7 +219,7 @@ async function sellAll() {
     }
 }
 
-async function updateScreenShow() {
+async function updateScreenShow(price: number) {
     const balanceInfo = await getBalanceInfo(TOKEN_B)
     let info: string = "";
     const maxLength = 50;
@@ -229,7 +229,7 @@ async function updateScreenShow() {
     info += `${reset}当前时间：${orange}${await formatDate(new Date())}${reset}\n`;
     info += `${reset}运行时长：${orange}${await formatTimeDifference(startTime.getTime(), new Date().getTime())}${reset}\n`;
     info += `${reset}钱包地址：${orange}${await getPublicKey()}${reset}\n`;
-    info += `${reset}当前价格：${green}${await getPrice(TOKEN_B, TOKEN_A)}${reset}\n`;
+    info += `${reset}当前价格：${green}${price}${reset}\n`;
     if (balanceInfo.tokenPrice) {
         //计算盈利百分比,利用总共购买的Token价值和购买金额计算
         const totalTokenPrice = (totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals)) * balanceInfo.tokenPrice;
@@ -239,10 +239,10 @@ async function updateScreenShow() {
         const profitPec = profit / (balanceInfo.token * balanceInfo.tokenPrice + balanceInfo.usdc);
         if (profit >= 0) {
             info += `${reset}盈利：${green}${roundToDecimal(profitPec, 5) * 100}%(${roundToDecimal(profit, 2)}USDC)${reset}`.padEnd(maxLength);
-            info += `${reset}总共盈利(USDC)：${green}${(totalProfit / Math.pow(10, userSetting.tokenADecimals)) - AMOUNT * sellTime}${reset}\n`;
+            info += `${reset}已盈利(USDC)：${green}${(totalProfit / Math.pow(10, userSetting.tokenADecimals)) - AMOUNT * sellTime}${reset}\n`;
         } else {
             info += `${reset}亏损：${red}${roundToDecimal(profitPec, 5) * 100}%(${roundToDecimal(profit, 2)}USDC)${reset}`.padEnd(maxLength);
-            info += `${reset}总共盈利(USDC)：${red}${(totalProfit / Math.pow(10, userSetting.tokenADecimals)) - AMOUNT * sellTime}${reset}\n`;
+            info += `${reset}已亏损(USDC)：${red}${(totalProfit / Math.pow(10, userSetting.tokenADecimals)) - AMOUNT * sellTime}${reset}\n`;
         }
     }
     info += `${reset}均价：${green}${((buyTime - sellTime) * AMOUNT) / (totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals))}${reset}`.padEnd(maxLength);
@@ -270,12 +270,12 @@ async function autoTrade() {
         try {
             const tokenA_decimals = userSetting.tokenADecimals;
             const tokenB_decimals = userSetting.tokenBDecimals;
-            updateScreenShow();
             const price = await getPrice(TOKEN_B, TOKEN_A);
             if (!price) {
                 await autoTradeWait();
                 continue;
             }
+            updateScreenShow(price);
             // 如果当前存在交易直接跳过
             if (tradeFlag != TradeFlagValue.DEFAULT) {
                 await autoTradeWait();
