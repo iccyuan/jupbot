@@ -309,6 +309,10 @@ async function autoTrade() {
                 }
             } else if (price < layer_1) {
                 const usdcBalance = await getTokenBalance(TOKEN_A);
+                if (!usdcBalance) {
+                    await autoTradeWait();
+                    continue;
+                }
                 //如果剩余的不够买,jup 限制最小值为5
                 if (usdcBalance <= AMOUNT) {
                     await sell(tokenB_decimals);
