@@ -61,8 +61,8 @@ let buyTime = 0;
 let sellTime = 0;
 // 总共购买的数量
 let totalBuyAmount = 0;
-// 总共盈利
-let totalProfit = 0;
+// 总共卖出多少USDC
+let totalSell = 0;
 //日志
 let logger: Logger = Logger.getInstance();
 
@@ -172,7 +172,7 @@ async function sell(decimals: number) {
                         calculateLayer_1();
                         sellTime++;
                         totalBuyAmount -= Number(quote.inAmount);
-                        totalProfit += Number(quote.outAmount);
+                        totalSell += Number(quote.outAmount);
                         logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}成功,卖出价${layer0}`);
                     } else {
                         logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}失败`);
@@ -239,10 +239,16 @@ async function updateScreenShow(price: number) {
         const profitPec = profit / (balanceInfo.token * balanceInfo.tokenPrice + balanceInfo.usdc);
         if (profit >= 0) {
             info += `${reset}盈利：${green}${roundToDecimal(profitPec, 5) * 100}%(${roundToDecimal(profit, 2)}USDC)${reset}`.padEnd(maxLength);
-            info += `${reset}已盈利(USDC)：${green}${(totalProfit / Math.pow(10, userSetting.tokenADecimals)) - AMOUNT * sellTime}${reset}\n`;
         } else {
             info += `${reset}亏损：${red}${roundToDecimal(profitPec, 5) * 100}%(${roundToDecimal(profit, 2)}USDC)${reset}`.padEnd(maxLength);
-            info += `${reset}已亏损(USDC)：${red}${(totalProfit / Math.pow(10, userSetting.tokenADecimals)) - AMOUNT * sellTime}${reset}\n`;
+        }
+
+        // 已经实现的盈亏
+        const totalProfit = (totalSell / Math.pow(10, userSetting.tokenADecimals)) - AMOUNT * sellTime;
+        if (profit >= 0) {
+            info += `${reset}已盈利(USDC)：${green}${totalProfit}${reset}\n`;
+        } else {
+            info += `${reset}已亏损(USDC)：${red}${totalProfit}${reset}\n`;
         }
     }
     info += `${reset}均价：${green}${((buyTime - sellTime) * AMOUNT) / (totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals))}${reset}`.padEnd(maxLength);
