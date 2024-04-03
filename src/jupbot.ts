@@ -376,5 +376,5 @@ start()
 
 
 rl.on('SIGINT', signalHandler);
-rl.on('SIGTERM', signalHandler)
-rl.on('SIGQUIT', signalHandler)
+//rl.on('SIGTERM', signalHandler)
+//rl.on('SIGQUIT', signalHandler)
