@@ -61,8 +61,12 @@ let buyTime = 0;
 let sellTime = 0;
 // 总共购买的数量
 let totalBuyAmount = 0;
+// 总共使用USDC
+let totalUSDCAmount = 0;
 // 总共卖出多少USDC
 let totalSell = 0;
+// 启动时的价值
+let initUSDCAmount = 0;
 //日志
 let logger: Logger = Logger.getInstance();
 
@@ -95,6 +99,10 @@ async function init() {
     } else {
         logger.error("请检查TokeB是否正确");
         process.exit(0);
+    }
+    const balanceInfo = await getBalanceInfo(TOKEN_B);
+    if (balanceInfo && balanceInfo.tokenPrice) {
+        initUSDCAmount = (balanceInfo.token * balanceInfo.tokenPrice + balanceInfo.usdc);
     }
 
 }
@@ -135,6 +143,7 @@ async function buy(decimals: number) {
                         calculateLayer_1();
                         buyTime++;
                         totalBuyAmount += Number(quote.outAmount);
+                        totalUSDCAmount += Number(quote.inAmount);
                         logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}成功,买入价${layer0}`);
                     } else {
                         logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}失败`);
@@ -172,6 +181,7 @@ async function sell(decimals: number) {
                         calculateLayer_1();
                         sellTime++;
                         totalBuyAmount -= Number(quote.inAmount);
+                        totalUSDCAmount -= Number(quote.outAmount);
                         totalSell += Number(quote.outAmount);
                         logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}成功,卖出价${layer0}`);
                     } else {
@@ -234,9 +244,9 @@ async function updateScreenShow(price: number) {
         //计算盈利百分比,利用总共购买的Token价值和购买金额计算
         const totalTokenPrice = (totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals)) * balanceInfo.tokenPrice;
         //当前持仓盈利
-        const profit = totalTokenPrice - ((buyTime - sellTime) * AMOUNT);
+        const profit = totalTokenPrice - (totalUSDCAmount / Math.pow(10, userSetting.tokenADecimals));
         //当前持仓盈利百分比
-        const profitPec = profit / (balanceInfo.token * balanceInfo.tokenPrice + balanceInfo.usdc);
+        const profitPec = profit / initUSDCAmount;
         if (profit >= 0) {
             info += `${reset}盈利：${green}${roundToDecimal(profitPec, 5) * 100}%(${roundToDecimal(profit, 2)}USDC)${reset}`.padEnd(maxLength);
         } else {
@@ -251,7 +261,8 @@ async function updateScreenShow(price: number) {
             info += `${reset}已亏损(USDC)：${red}${totalProfit}${reset}\n`;
         }
     }
-    info += `${reset}均价：${green}${((buyTime - sellTime) * AMOUNT) / (totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals))}${reset}`.padEnd(maxLength);
+    info += `${reset}均价：${green}${(totalUSDCAmount / Math.pow(10, userSetting.tokenADecimals)
+        / (totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals)))}${reset}`.padEnd(maxLength);
     info += `${reset}总共购买：${green}${totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals)}${reset}\n`;
     info += `${reset}买入：${green}${layer_1}${reset}`.padEnd(maxLength);
     info += `${reset}卖出：${green}${layer1}${reset}\n`;
@@ -300,7 +311,7 @@ async function autoTrade() {
                     continue;
                 }
                 const totalTokenBalance = tokenBalance * price;
-                // 如果剩余的不够卖,jup限制最小为5
+                // 如果剩余的不够买,jup限制最小为5
                 if (totalTokenBalance <= AMOUNT) {
                     await buy(tokenA_decimals)
                 } else {
@@ -319,7 +330,7 @@ async function autoTrade() {
                     await autoTradeWait();
                     continue;
                 }
-                //如果剩余的不够买,jup 限制最小值为5
+                //如果剩余的不够卖,jup 限制最小值为5
                 if (usdcBalance <= AMOUNT) {
                     await sell(tokenB_decimals);
                 } else {
