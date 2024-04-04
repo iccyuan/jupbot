@@ -59,6 +59,7 @@ export async function swap(quote: QuoteResponse) {
             swapRequest: {
                 quoteResponse: quote,
                 userPublicKey: wallet.publicKey.toBase58(),
+                wrapAndUnwrapSol: false,
                 dynamicComputeUnitLimit: true,
                 prioritizationFeeLamports: "auto",
                 // prioritizationFeeLamports: {
