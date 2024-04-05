@@ -61,10 +61,10 @@ let buyTime = 0;
 let sellTime = 0;
 // 总共购买的数量
 let totalBuyAmount = 0;
-// 总共使用USDC
-let totalUSDCAmount = 0;
-// 总共卖出多少USDC
-let totalSell = 0;
+// 总共买入USDC
+let totalBuyUSDCAmount = 0;
+// 总共卖出USDC
+let totalSellUSDCAmount = 0;
 // 启动时的价值
 let initUSDCAmount = 0;
 //日志
@@ -143,7 +143,7 @@ async function buy(decimals: number) {
                         calculateLayer_1();
                         buyTime++;
                         totalBuyAmount += Number(quote.outAmount);
-                        totalUSDCAmount += Number(quote.inAmount);
+                        totalBuyUSDCAmount += Number(quote.inAmount);
                         logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}成功,买入价${layer0}`);
                     } else {
                         logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}失败`);
@@ -181,8 +181,7 @@ async function sell(decimals: number) {
                         calculateLayer_1();
                         sellTime++;
                         totalBuyAmount -= Number(quote.inAmount);
-                        totalUSDCAmount -= Number(quote.outAmount);
-                        totalSell += Number(quote.outAmount);
+                        totalSellUSDCAmount -= Number(quote.outAmount);
                         logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}成功,卖出价${layer0}`);
                     } else {
                         logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}失败`);
@@ -244,7 +243,7 @@ async function updateScreenShow(price: number) {
         //计算盈利百分比,利用总共购买的Token价值和购买金额计算
         const totalTokenPrice = (totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals)) * balanceInfo.tokenPrice;
         //当前持仓盈利
-        const profit = totalTokenPrice - (totalUSDCAmount / Math.pow(10, userSetting.tokenADecimals));
+        const profit = totalTokenPrice - (totalBuyUSDCAmount / Math.pow(10, userSetting.tokenADecimals));
         //当前持仓盈利百分比
         const profitPec = profit / initUSDCAmount;
         if (profit >= 0) {
@@ -254,14 +253,19 @@ async function updateScreenShow(price: number) {
         }
 
         // 已经实现的盈亏
-        const totalProfit = (totalSell / Math.pow(10, userSetting.tokenADecimals)) - AMOUNT * sellTime;
+        let totalProfit = (totalSellUSDCAmount / Math.pow(10, userSetting.tokenADecimals)) - (totalBuyUSDCAmount / Math.pow(10, userSetting.tokenADecimals));
+        // 当卖出大于买入时会造成一定的盈利计算偏差
+        // 如果不够钱卖入时会有先卖出操作
+        if (sellTime > buyTime) {
+            totalProfit = totalProfit - (sellTime - buyTime) * AMOUNT;
+        }
         if (profit >= 0) {
             info += `${reset}已盈利(USDC)：${green}${totalProfit}${reset}\n`;
         } else {
             info += `${reset}已亏损(USDC)：${red}${totalProfit}${reset}\n`;
         }
     }
-    info += `${reset}均价：${green}${(totalUSDCAmount / Math.pow(10, userSetting.tokenADecimals)
+    info += `${reset}均价：${green}${(totalBuyUSDCAmount / Math.pow(10, userSetting.tokenADecimals)
         / (totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals)))}${reset}`.padEnd(maxLength);
     info += `${reset}总共购买：${green}${totalBuyAmount / Math.pow(10, userSetting.tokenBDecimals)}${reset}\n`;
     info += `${reset}买入：${green}${layer_1}${reset}`.padEnd(maxLength);
