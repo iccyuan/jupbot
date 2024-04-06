@@ -167,6 +167,9 @@ async function sell(decimals: number) {
     tradeFlag = TradeFlagValue.SELL;
     let amount = AMOUNT / price;
     amount = Math.floor(amount * Math.pow(10, decimals));
+    if (remainAmount < amount) {
+        amount = remainAmount;
+    }
     await quote(TOKEN_B, TOKEN_A, amount).then(
         (quote) => {
             if (quote) {
