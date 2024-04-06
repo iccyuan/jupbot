@@ -261,6 +261,8 @@ async function updateScreenShow(price: number) {
         // 如果不够钱卖入时会有先卖出操作
         if (sellTime > buyTime) {
             totalProfit = totalProfit - (sellTime - buyTime) * AMOUNT;
+        } else {
+            totalProfit = totalProfit + (buyTime - sellTime) * AMOUNT;
         }
         if (totalProfit >= 0) {
             info += `${reset}已盈利(USDC)：${green}${totalProfit}${reset}\n`;
