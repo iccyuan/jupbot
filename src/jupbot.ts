@@ -253,9 +253,9 @@ async function updateScreenShow(price: number) {
         //当前持仓盈利百分比
         const profitPec = profit / initUSDCAmount;
         if (profit >= 0) {
-            info += `${reset}盈利：${green}${roundToDecimal(profitPec, 5) * 100}%(${roundToDecimal(profit, 2)}USDC)${reset}`.padEnd(maxLength);
+            info += `${reset}盈利：${green}${roundToDecimal(profitPec, 5) * 100}%${reset}`.padEnd(maxLength);
         } else {
-            info += `${reset}亏损：${red}${roundToDecimal(profitPec, 5) * 100}%(${roundToDecimal(profit, 2)}USDC)${reset}`.padEnd(maxLength);
+            info += `${reset}亏损：${red}${roundToDecimal(profitPec, 5) * 100}%${reset}`.padEnd(maxLength);
         }
 
         // 已经实现的盈亏
