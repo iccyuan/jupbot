@@ -241,6 +241,7 @@ async function updateScreenShow(price: number) {
     info += `${reset}当前时间：${orange}${await formatDate(new Date())}${reset}\n`;
     info += `${reset}运行时长：${orange}${await formatTimeDifference(startTime.getTime(), new Date().getTime())}${reset}\n`;
     info += `${reset}钱包地址：${orange}${await getPublicKey()}${reset}\n`;
+    info += `${reset}启动时总资产：${orange}${initUSDCAmount}${reset}\n`;
     info += `${reset}当前价格：${green}${price}${reset}\n`;
     if (balanceInfo.tokenPrice) {
         //计算盈利百分比,利用总共购买的Token价值和购买金额计算
@@ -251,7 +252,7 @@ async function updateScreenShow(price: number) {
             profit = totalTokenPrice - ((totalSellUSDCAmount - totalBuyUSDCAmount) / Math.pow(10, userSetting.tokenADecimals));
         }
         //当前持仓盈利百分比
-        const profitPec = profit / initUSDCAmount;
+        const profitPec = profit / totalTokenPrice;
         if (profit >= 0) {
             info += `${reset}盈利：${green}${roundToDecimal(profitPec, 5) * 100}%${reset}`.padEnd(maxLength);
         } else {
