@@ -18,7 +18,7 @@ const wallet = new Wallet(
 
 const API_ENDPOINT = EnvConfig.get(EnvKeys.API_ENDPOINT, clusterApiUrl('mainnet-beta'))
 const connection = new Connection(API_ENDPOINT,
-    { commitment: "confirmed", confirmTransactionInitialTimeout: 5000, disableRetryOnRateLimit: true });
+    { commitment: "confirmed", confirmTransactionInitialTimeout: 5000, disableRetryOnRateLimit: false });
 
 // 定义ANSI转义序列来设置绿色和重置颜色
 const green = '\x1b[32m';

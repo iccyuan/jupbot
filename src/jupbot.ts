@@ -132,7 +132,6 @@ async function buy(decimals: number) {
                 if (quote) {
                     logger.info(`\u{1F4C9}开始买入${userSetting.tokenBSymbol} ${amount / Math.pow(10, decimals)}${userSetting.tokenASymbol}`);
                     swap(quote).then((isScueess) => {
-                        tradeFlag = TradeFlagValue.DEFAULT;
                         if (isScueess) {
                             //根据quote获取实际价格
                             // layer0 = (Number(quote.inAmount) / Math.pow(10, userSetting.tokenADecimals))
@@ -149,6 +148,7 @@ async function buy(decimals: number) {
                         } else {
                             logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}失败`);
                         }
+                        tradeFlag = TradeFlagValue.DEFAULT;
                     })
                 } else {
                     tradeFlag = TradeFlagValue.DEFAULT;
@@ -165,13 +165,13 @@ async function buy(decimals: number) {
 
 async function sell(decimals: number) {
     try {
+        tradeFlag = TradeFlagValue.SELL;
         //这里固定TokenA 必须是USDC，避免做过多的逻辑判断
         //得到TokenB 单价
         const price = await getPrice(TOKEN_B, TOKEN_A);
         if (!price) {
             return;
         }
-        tradeFlag = TradeFlagValue.SELL;
         let amount = AMOUNT / price;
         amount = Math.floor(amount * Math.pow(10, decimals));
         await quote(TOKEN_B, TOKEN_A, amount).then(
@@ -179,7 +179,6 @@ async function sell(decimals: number) {
                 if (quote) {
                     logger.info(`\u{1F4C8}开始卖出${userSetting.tokenBSymbol}${amount / Math.pow(10, decimals)}`);
                     swap(quote).then((isScueess) => {
-                        tradeFlag = TradeFlagValue.DEFAULT;
                         if (isScueess) {
                             //根据quote获取实际价格
                             layer0 = (Number(quote.outAmount) / Math.pow(10, userSetting.tokenADecimals))
@@ -193,6 +192,7 @@ async function sell(decimals: number) {
                         } else {
                             logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}失败`);
                         }
+                        tradeFlag = TradeFlagValue.DEFAULT;
                     })
                 } else {
                     tradeFlag = TradeFlagValue.DEFAULT;
