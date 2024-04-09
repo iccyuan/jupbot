@@ -123,78 +123,88 @@ function calculateLayer_1() {
 
 
 async function buy(decimals: number) {
-    tradeFlag = TradeFlagValue.BUY;
-    let amount = AMOUNT;
-    amount = Math.floor(amount * Math.pow(10, decimals));
-    await quote(TOKEN_A, TOKEN_B, amount).then(
-        (quote) => {
-            if (quote) {
-                logger.info(`\u{1F4C9}开始买入${userSetting.tokenBSymbol} ${amount / Math.pow(10, decimals)}${userSetting.tokenASymbol}`);
-                swap(quote).then((isScueess) => {
+    try {
+        tradeFlag = TradeFlagValue.BUY;
+        let amount = AMOUNT;
+        amount = Math.floor(amount * Math.pow(10, decimals));
+        await quote(TOKEN_A, TOKEN_B, amount).then(
+            (quote) => {
+                if (quote) {
+                    logger.info(`\u{1F4C9}开始买入${userSetting.tokenBSymbol} ${amount / Math.pow(10, decimals)}${userSetting.tokenASymbol}`);
+                    swap(quote).then((isScueess) => {
+                        tradeFlag = TradeFlagValue.DEFAULT;
+                        if (isScueess) {
+                            //根据quote获取实际价格
+                            // layer0 = (Number(quote.inAmount) / Math.pow(10, userSetting.tokenADecimals))
+                            //     / (Number(quote.outAmount) / Math.pow(10, userSetting.tokenBDecimals));
+                            // 直接使用触发价格，要注意滑点和盈利之间的间隔配置防止亏损
+                            // 如果使用实际价格，在价格波动情况较大的情况下会造成重复购买
+                            layer0 = layer_1;
+                            calculateLayer1();
+                            calculateLayer_1();
+                            buyTime++;
+                            remainAmount += Number(quote.outAmount);
+                            totalBuyUSDCAmount += Number(quote.inAmount);
+                            logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}成功,买入价${layer0}`);
+                        } else {
+                            logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}失败`);
+                        }
+                    })
+                } else {
                     tradeFlag = TradeFlagValue.DEFAULT;
-                    if (isScueess) {
-                        //根据quote获取实际价格
-                        // layer0 = (Number(quote.inAmount) / Math.pow(10, userSetting.tokenADecimals))
-                        //     / (Number(quote.outAmount) / Math.pow(10, userSetting.tokenBDecimals));
-                        // 直接使用触发价格，要注意滑点和盈利之间的间隔配置防止亏损
-                        // 如果使用实际价格，在价格波动情况较大的情况下会造成重复购买
-                        layer0 = layer_1;
-                        calculateLayer1();
-                        calculateLayer_1();
-                        buyTime++;
-                        remainAmount += Number(quote.outAmount);
-                        totalBuyUSDCAmount += Number(quote.inAmount);
-                        logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}成功,买入价${layer0}`);
-                    } else {
-                        logger.info(`\u{1F4C9}买入${userSetting.tokenBSymbol}失败`);
-                    }
-                })
-            } else {
-                tradeFlag = TradeFlagValue.DEFAULT;
+                }
             }
-        }
-    );
+        );
+    } catch (error) {
+        logger.error(`buy：${error}`)
+    } finally {
+        tradeFlag = TradeFlagValue.DEFAULT;
+    }
 
 }
 
 async function sell(decimals: number) {
-    //这里固定TokenA 必须是USDC，避免做过多的逻辑判断
-    //得到TokenB 单价
-    const price = await getPrice(TOKEN_B, TOKEN_A);
-    if (!price) {
-        return;
-    }
-    tradeFlag = TradeFlagValue.SELL;
-    let amount = AMOUNT / price;
-    amount = Math.floor(amount * Math.pow(10, decimals));
-    if (remainAmount < amount) {
-        amount = remainAmount;
-    }
-    await quote(TOKEN_B, TOKEN_A, amount).then(
-        (quote) => {
-            if (quote) {
-                logger.info(`\u{1F4C8}开始卖出${userSetting.tokenBSymbol}${amount / Math.pow(10, decimals)}`);
-                swap(quote).then((isScueess) => {
-                    tradeFlag = TradeFlagValue.DEFAULT;
-                    if (isScueess) {
-                        //根据quote获取实际价格
-                        layer0 = (Number(quote.outAmount) / Math.pow(10, userSetting.tokenADecimals))
-                            / (Number(quote.inAmount) / Math.pow(10, userSetting.tokenBDecimals));
-                        calculateLayer1();
-                        calculateLayer_1();
-                        sellTime++;
-                        remainAmount -= Number(quote.inAmount);
-                        totalSellUSDCAmount += Number(quote.outAmount);
-                        logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}成功,卖出价${layer0}`);
-                    } else {
-                        logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}失败`);
-                    }
-                })
-            } else {
-                tradeFlag = TradeFlagValue.DEFAULT;
-            }
+    try {
+        //这里固定TokenA 必须是USDC，避免做过多的逻辑判断
+        //得到TokenB 单价
+        const price = await getPrice(TOKEN_B, TOKEN_A);
+        if (!price) {
+            return;
         }
-    );
+        tradeFlag = TradeFlagValue.SELL;
+        let amount = AMOUNT / price;
+        amount = Math.floor(amount * Math.pow(10, decimals));
+        await quote(TOKEN_B, TOKEN_A, amount).then(
+            (quote) => {
+                if (quote) {
+                    logger.info(`\u{1F4C8}开始卖出${userSetting.tokenBSymbol}${amount / Math.pow(10, decimals)}`);
+                    swap(quote).then((isScueess) => {
+                        tradeFlag = TradeFlagValue.DEFAULT;
+                        if (isScueess) {
+                            //根据quote获取实际价格
+                            layer0 = (Number(quote.outAmount) / Math.pow(10, userSetting.tokenADecimals))
+                                / (Number(quote.inAmount) / Math.pow(10, userSetting.tokenBDecimals));
+                            calculateLayer1();
+                            calculateLayer_1();
+                            sellTime++;
+                            remainAmount -= Number(quote.inAmount);
+                            totalSellUSDCAmount += Number(quote.outAmount);
+                            logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}成功,卖出价${layer0}`);
+                        } else {
+                            logger.info(`\u{1F4C8}卖出${userSetting.tokenBSymbol}失败`);
+                        }
+                    })
+                } else {
+                    tradeFlag = TradeFlagValue.DEFAULT;
+                }
+            }
+        );
+    } catch (error) {
+        logger.error(`sell：${error}`)
+    } finally {
+        tradeFlag = TradeFlagValue.DEFAULT;
+    }
+
 }
 
 
@@ -313,6 +323,7 @@ async function autoTrade() {
             updateScreenShow(price);
             // 如果当前存在交易直接跳过
             if (tradeFlag != TradeFlagValue.DEFAULT) {
+                logger.info(`tradeFlag：${tradeFlag}`);
                 await autoTradeWait();
                 continue;
             }
@@ -356,7 +367,7 @@ async function autoTrade() {
                 }
             }
         } catch (error) {
-            logger.error(`autoTrade:${error}`);
+            logger.error(`autoTrade：${error}`);
         }
         await autoTradeWait();
     }
