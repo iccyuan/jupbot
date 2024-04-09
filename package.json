@@ -20,7 +20,7 @@
 		"@jup-ag/api": "^6.0.19",
 		"@project-serum/anchor": "^0.26.0",
 		"@solana/spl-token": "^0.4.1",
-		"@solana/web3.js": "^1.91.1",
+		"@solana/web3.js": "^1.91.4",
 		"@trpc/server": "^10.45.2",
 		"axios": "^1.6.7",
 		"bs58": "^5.0.0",
